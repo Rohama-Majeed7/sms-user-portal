@@ -21,7 +21,7 @@ const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const isVerified = JSON.parse(localStorage.getItem('isVerified'));
+  const isVerified = JSON.parse(localStorage.getItem('isVerified') || 'null');
 
   const selectedSchool: School | null = (() => {
     try {

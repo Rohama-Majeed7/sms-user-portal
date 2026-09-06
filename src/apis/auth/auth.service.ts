@@ -1,4 +1,4 @@
-import api from "../api"
+import api from "../api.ts"
 
 export const signUp = async (data: any) => {
     const response = await api.post('auth/signup', {

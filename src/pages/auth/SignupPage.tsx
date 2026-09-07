@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { User, Mail, Lock, Eye, EyeOff, ArrowRight, UserPlus, GraduationCap, School, Users, Building2 } from 'lucide-react';
+import { User, Mail, Lock, Eye, EyeOff, ArrowRight, UserPlus, GraduationCap, School, Building2 } from 'lucide-react';
 import type { UserRole } from '../../types/role';
 import { signUp } from '../../apis/auth/auth.service';
 
@@ -108,12 +108,12 @@ const SignupPage: React.FC = () => {
           )}
           <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Create Portal Account</h2>
           <p className="text-slate-400 text-xs sm:text-sm mt-1.5 leading-relaxed">
-            Register your portal account as a student, teacher, or parent.
+            Register your portal account as a student or teacher.
           </p>
         </div>
 
         {/* Role Selector Tabs */}
-        <div className="grid grid-cols-3 gap-2 p-1.5 rounded-2xl bg-slate-950/80 border border-slate-800">
+        <div className="grid grid-cols-2 gap-2 p-1.5 rounded-2xl bg-slate-950/80 border border-slate-800">
           <button
             type="button"
             onClick={() => setSelectedRole('STUDENT')}
@@ -134,17 +134,6 @@ const SignupPage: React.FC = () => {
               }`}
           >
             <School className="w-3.5 h-3.5" /> Teacher
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setSelectedRole('PARENT')}
-            className={`flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-semibold transition cursor-pointer ${selectedRole === 'PARENT'
-              ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30'
-              : 'text-slate-400 hover:text-white hover:bg-slate-900'
-              }`}
-          >
-            <Users className="w-3.5 h-3.5" /> Parent
           </button>
         </div>
 
@@ -268,11 +257,9 @@ const SignupPage: React.FC = () => {
             type="submit"
             disabled={loading}
             style={{ paddingTop: '0.9rem', paddingBottom: '0.9rem' }}
-            className={`w-full active:scale-[0.99] text-white font-semibold text-xs sm:text-sm rounded-xl shadow-xl transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 mt-1 ${selectedRole === 'STUDENT'
-              ? 'bg-gradient-to-r from-indigo-600 via-indigo-500 to-violet-600 shadow-indigo-600/25'
-              : selectedRole === 'TEACHER'
-                ? 'bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 shadow-emerald-600/25'
-                : 'bg-gradient-to-r from-amber-600 via-amber-500 to-orange-600 shadow-amber-600/25'
+            className={`w-full active:scale-[0.99] text-white font-semibold text-xs sm:text-sm rounded-xl shadow-xl transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 mt-1 ${selectedRole === 'TEACHER'
+              ? 'bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 shadow-emerald-600/25'
+              : 'bg-gradient-to-r from-indigo-600 via-indigo-500 to-violet-600 shadow-indigo-600/25'
               }`}
           >
             {loading ? (

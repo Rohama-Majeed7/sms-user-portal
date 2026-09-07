@@ -25,8 +25,7 @@ body {
 .theme-student { --role-primary: #6366f1; --role-dark: #4f46e5; --role-accent: #818cf8; --role-bg: rgba(99,102,241,0.08); --role-border: rgba(99,102,241,0.2); }
 /* Teacher: emerald/teal */
 .theme-teacher { --role-primary: #10b981; --role-dark: #059669; --role-accent: #34d399; --role-bg: rgba(16,185,129,0.08); --role-border: rgba(16,185,129,0.2); }
-/* Parent: amber/orange */
-.theme-parent  { --role-primary: #f59e0b; --role-dark: #d97706; --role-accent: #fbbf24; --role-bg: rgba(245,158,11,0.08);  --role-border: rgba(245,158,11,0.2);  }
+
 
 /* ─── Sidebar ─── */
 .sidebar {

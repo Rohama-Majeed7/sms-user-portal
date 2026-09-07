@@ -79,8 +79,6 @@ const LoginPage: React.FC = () => {
         navigate('/student-dashboard');
       } else if (res.user.role === "TEACHER") {
         navigate('/teacher-dashboard');
-      } else if (res.user.role === "PARENT") {
-        navigate('/parent-dashboard');
       }
     } catch (err: any) {
       const message: string = err?.response?.data?.message || '';

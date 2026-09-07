@@ -6,7 +6,7 @@ import VerifyEmailPage from './pages/auth/VerifyEmailPage';
 import SchoolSelector from './pages/auth/SchoolSelector';
 import StudentDashboard from './pages/student/StudentDashboard';
 import TeacherDashboard from './pages/teacher/TeacherDashboard';
-import ParentDashboard from './pages/parent/ParentDashboard';
+
 
 // ─── Protected Route Guard ───────────────────────────────────────
 const ProtectedRoute = ({ element }: { element: React.ReactNode }) => {
@@ -28,14 +28,14 @@ const App = () => {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/select-school" element={!school || !token || !user ? <SchoolSelector /> : <Navigate to={user?.role === 'TEACHER' ? "/teacher-dashboard" : user?.role === 'PARENT' ? "/parent-dashboard" : "/student-dashboard"} replace />} />
+        <Route path="/select-school" element={!school || !token || !user ? <SchoolSelector /> : <Navigate to={user?.role === 'TEACHER' ? "/teacher-dashboard" : "/student-dashboard"} replace />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route path="/student-dashboard" element={<ProtectedRoute element={<StudentDashboard />} />} />
         <Route path="/teacher-dashboard" element={<ProtectedRoute element={<TeacherDashboard />} />} />
-        <Route path="/parent-dashboard" element={<ProtectedRoute element={<ParentDashboard />} />} />
+
         <Route path="*" element={<Navigate to="/select-school" replace />} />
       </Routes>
     </BrowserRouter>

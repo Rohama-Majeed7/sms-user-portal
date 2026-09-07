@@ -3,7 +3,7 @@ import {
   LayoutDashboard, BookOpen, GraduationCap, Calendar, Bell,
   Search, Menu, X, ChevronDown, LogOut, Settings,
   Users, FileText, MessageSquare, ClipboardList, TrendingUp,
-  CheckSquare, CreditCard, Heart, Star, Home, BarChart3
+  CheckSquare, CreditCard, Star, BarChart3
 } from 'lucide-react';
 import type { UserRole } from '../types/role';
 import { logout } from '../apis/auth/auth.service';
@@ -80,50 +80,16 @@ const teacherNav = [
   },
 ];
 
-const parentNav = [
-  {
-    title: 'Overview',
-    items: [
-      { icon: <Home size={18} />, label: 'Dashboard', href: '/dashboard' },
-      { icon: <Bell size={18} />, label: 'Notifications', href: '/notifications', badge: '2' },
-    ],
-  },
-  {
-    title: "My Children",
-    items: [
-      { icon: <GraduationCap size={18} />, label: 'Academic Report', href: '/report' },
-      { icon: <Star size={18} />, label: 'Grades', href: '/grades' },
-      { icon: <CheckSquare size={18} />, label: 'Attendance', href: '/attendance' },
-      { icon: <ClipboardList size={18} />, label: 'Assignments', href: '/assignments' },
-    ],
-  },
-  {
-    title: 'Communication',
-    items: [
-      { icon: <MessageSquare size={18} />, label: 'Messages', href: '/messages', badge: '1' },
-      { icon: <Calendar size={18} />, label: 'Events', href: '/events' },
-      { icon: <Heart size={18} />, label: 'Well-being', href: '/wellbeing' },
-    ],
-  },
-  {
-    title: 'Finance',
-    items: [
-      { icon: <CreditCard size={18} />, label: 'Fee Payments', href: '/fees' },
-      { icon: <Settings size={18} />, label: 'Settings', href: '/settings' },
-    ],
-  },
-];
+
 
 const roleNavMap: Record<UserRole, typeof studentNav> = {
   STUDENT: studentNav,
   TEACHER: teacherNav,
-  PARENT: parentNav,
 };
 
 const roleMeta: Record<UserRole, { theme: string; label: string; icon: React.ReactNode; color: string }> = {
   STUDENT: { theme: 'theme-student', label: 'Student', icon: <GraduationCap size={20} />, color: '#818cf8' },
   TEACHER: { theme: 'theme-teacher', label: 'Teacher', icon: <Users size={20} />, color: '#34d399' },
-  PARENT: { theme: 'theme-parent', label: 'Parent', icon: <Heart size={20} />, color: '#fbbf24' },
 };
 
 // ─── Layout Component ────────────────────────────────────────────

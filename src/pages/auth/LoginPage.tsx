@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import {
   AlertCircle,
   ArrowRight,
-  Building2,
   CheckCircle2,
   Eye,
   EyeOff,
@@ -14,12 +13,10 @@ import {
   UserCheck,
 } from 'lucide-react';
 
-import type { School } from '../../types/school';
 import { login } from '../../apis/auth/auth.service';
 
 const SESSION_KEY = 'sms_login_draft';
 const REMEMBER_KEY = 'sms_remember_email';
-const SCHOOL_KEY = 'sms_selected_school';
 const VERIFIED_KEY = 'isVerified';
 
 interface LoginDraft {
@@ -44,15 +41,6 @@ const getSessionDraft = (): LoginDraft => {
     return saved ? JSON.parse(saved) : {};
   } catch {
     return {};
-  }
-};
-
-const getSelectedSchool = (): School | null => {
-  try {
-    const saved = localStorage.getItem(SCHOOL_KEY);
-    return saved ? JSON.parse(saved) : null;
-  } catch {
-    return null;
   }
 };
 
@@ -85,20 +73,6 @@ const LoginPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [verificationNotice, setVerificationNotice] = useState(false);
-
-  const selectedSchool = useMemo(() => getSelectedSchool(), []);
-
-  const selectedSchoolId =
-    selectedSchool?.id || (selectedSchool as any)?._id;
-
-  const schoolName =
-    (selectedSchool as any)?.schoolName ||
-    (selectedSchool as any)?.name ||
-    (selectedSchool as any)?.username ||
-    (selectedSchool as any)?.email ||
-    'Selected School';
-
-  // const isTeacher = false;
 
   /**
    * Persist only non-sensitive login data.
@@ -157,11 +131,6 @@ const LoginPage: React.FC = () => {
       return;
     }
 
-    if (!selectedSchoolId) {
-      setError('Please select your school before signing in.');
-      return;
-    }
-
     const storedVerificationStatus = getStoredVerificationStatus();
 
     if (storedVerificationStatus !== null && !storedVerificationStatus) {
@@ -175,7 +144,6 @@ const LoginPage: React.FC = () => {
       const res: LoginResponse = await login({
         email: normalizedEmail,
         password,
-        schoolId: selectedSchoolId,
       });
 
       const user = res?.user;
@@ -202,17 +170,9 @@ const LoginPage: React.FC = () => {
 
       sessionStorage.removeItem(SESSION_KEY);
 
-      if (user.role === 'STUDENT') {
-        navigate('/student-dashboard');
-        return;
-      }
-
-      if (user.role === 'TEACHER') {
-        navigate('/teacher-dashboard');
-        return;
-      }
-
-      setError('Your account role is not supported.');
+      // Student or teacher now chooses which school to connect with
+      navigate('/select-school');
+      return;
     } catch (err: any) {
       const message =
         err?.response?.data?.message ||
@@ -238,14 +198,6 @@ const LoginPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleChangeSchool = () => {
-    navigate('/select-school', {
-      state: {
-        from: 'login',
-      },
-    });
   };
 
   return (
@@ -296,33 +248,11 @@ const LoginPage: React.FC = () => {
             <div className="p-6 sm:p-8 lg:p-9">
               {/* Header */}
               <div className="mb-7 text-center">
-                {selectedSchool ? (
-                  <div className="mb-5 flex justify-center">
-                    <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-indigo-500/20 bg-slate-950/70 px-3.5 py-2 shadow-lg">
-                      <Building2 className="h-4 w-4 shrink-0 text-indigo-400" />
-
-                      <span className="max-w-[190px] truncate text-xs font-semibold text-indigo-200 sm:max-w-[260px] sm:text-sm">
-                        {schoolName}
-                      </span>
-
-                      <span className="h-3.5 w-px bg-slate-700" />
-
-                      <button
-                        type="button"
-                        onClick={handleChangeSchool}
-                        className="shrink-0 text-[11px] font-semibold text-slate-400 transition hover:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
-                      >
-                        Change
-                      </button>
-                    </div>
+                <div className="mb-5 flex justify-center">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-indigo-500/20 bg-indigo-500/10 shadow-inner shadow-indigo-950/40">
+                    <UserCheck className="h-7 w-7 text-indigo-400" />
                   </div>
-                ) : (
-                  <div className="mb-5 flex justify-center">
-                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-indigo-500/20 bg-indigo-500/10 shadow-inner">
-                      <UserCheck className="h-6 w-6 text-indigo-400" />
-                    </div>
-                  </div>
-                )}
+                </div>
 
                 <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
                   Welcome Back

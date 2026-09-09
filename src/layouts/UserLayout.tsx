@@ -11,6 +11,7 @@ import {
   Users,
   User,
   ShieldCheck,
+  Building2,
 } from 'lucide-react';
 import type { UserRole } from '../types/role';
 import { logout } from '../apis/auth/auth.service';
@@ -104,6 +105,9 @@ const UserLayout: React.FC<UserLayoutProps> = ({
   const navigate = useNavigate();
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const school = JSON.parse(localStorage.getItem('sms_selected_school') || 'null');
+  const schoolName = school?.name || school?.schoolName || school?.username || school?.email || '';
+
   const nav = roleNavMap[role];
   const meta = roleMeta[role];
 
@@ -133,6 +137,7 @@ const UserLayout: React.FC<UserLayoutProps> = ({
     } finally {
       localStorage.removeItem('accessToken');
       localStorage.removeItem('user');
+      localStorage.removeItem('sms_selected_school');
       navigate('/login');
     }
   };
@@ -385,6 +390,18 @@ const UserLayout: React.FC<UserLayoutProps> = ({
             />
           </div>
 
+          {/* Connected School */}
+          {schoolName && (
+            <Link
+              to="/select-school"
+              className="hidden sm:inline-flex items-center gap-1.5 rounded-xl border border-slate-800 bg-slate-900/70 px-3 py-1.5 text-xs font-medium text-slate-300 hover:border-slate-700 hover:text-white transition"
+              title="Connected School - Click to switch"
+            >
+              <Building2 size={13} className="text-slate-400 shrink-0" />
+              <span className="max-w-[150px] truncate">{schoolName}</span>
+            </Link>
+          )}
+
           {/* Notifications */}
           <button
             type="button"
@@ -487,6 +504,15 @@ const UserLayout: React.FC<UserLayoutProps> = ({
                   >
                     <LayoutDashboard size={15} />
                     Dashboard
+                  </Link>
+
+                  <Link
+                    to="/select-school"
+                    onClick={() => setProfileOpen(false)}
+                    className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm text-slate-300 transition hover:bg-white/5 hover:text-white"
+                  >
+                    <Building2 size={15} />
+                    Switch School
                   </Link>
                 </div>
 

@@ -10,36 +10,66 @@ import TeacherDashboard from './pages/teacher/TeacherDashboard';
 import TeacherProfile from './pages/teacher/TeacherProfile';
 
 
-// ─── Protected Route Guard ───────────────────────────────────────
+// ─── Protected Route Guard (Requires Login + Connected School) ────
 const ProtectedRoute = ({ element }: { element: React.ReactNode }) => {
-  const school = localStorage.getItem('sms_selected_school');
   const token = localStorage.getItem('accessToken');
-  // const isVerified = localStorage.getItem('isVerified');       // 'true' | 'false' | null
   const user = JSON.parse(localStorage.getItem('user') || 'null');
-  if (!school) return <Navigate to="/select-school" replace />;
-  if (!token || !user) return <Navigate to="/select-school" replace />;
-  // if (!isVerified || isVerified !== 'true') return <Navigate to="/verify-email" replace />;
+  const school = localStorage.getItem('sms_selected_school');
+
+  if (!token || !user) {
+    return <Navigate to="/login" replace />;
+  }
+  if (!school) {
+    return <Navigate to="/select-school" replace />;
+  }
   return <>{element}</>;
 };
 
-const App = () => {
-  const school = localStorage.getItem('sms_selected_school');
+// ─── School Selector Guard (Requires Login, allows picking/switching school) ────
+const SchoolSelectorGuard = () => {
   const token = localStorage.getItem('accessToken');
   const user = JSON.parse(localStorage.getItem('user') || 'null');
 
+  if (!token || !user) {
+    return <Navigate to="/login" replace />;
+  }
+  return <SchoolSelector />;
+};
+
+// ─── Public Auth Guard (Redirects away from login/signup if already fully connected) ────
+const LoginRoute = () => {
+  const token = localStorage.getItem('accessToken');
+  const user = JSON.parse(localStorage.getItem('user') || 'null');
+  const school = localStorage.getItem('sms_selected_school');
+
+  if (token && user) {
+    if (!school) return <Navigate to="/select-school" replace />;
+    return <Navigate to={user?.role === 'TEACHER' ? "/teacher-dashboard" : "/student-dashboard"} replace />;
+  }
+  return <LoginPage />;
+};
+
+const App = () => {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/select-school" element={!school || !token || !user ? <SchoolSelector /> : <Navigate to={user?.role === 'TEACHER' ? "/teacher-dashboard" : "/student-dashboard"} replace />} />
-        <Route path="/login" element={<LoginPage />} />
+        {/* Auth routes */}
+        <Route path="/login" element={<LoginRoute />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
+
+        {/* Post-login school selection */}
+        <Route path="/select-school" element={<SchoolSelectorGuard />} />
+
+        {/* Protected portal routes (Requires authenticated user with connected school) */}
         <Route path="/student-dashboard" element={<ProtectedRoute element={<StudentDashboard />} />} />
         <Route path="/student-profile" element={<ProtectedRoute element={<StudentProfile />} />} />
         <Route path="/teacher-dashboard" element={<ProtectedRoute element={<TeacherDashboard />} />} />
         <Route path="/teacher-profile" element={<ProtectedRoute element={<TeacherProfile />} />} />
-        <Route path="*" element={<Navigate to="/select-school" replace />} />
+
+        {/* Default fallback: Go to login */}
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>
   );

@@ -1,50 +1,136 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import UserLayout from '../../layouts/UserLayout';
 import {
-  Calendar, Award, BookOpen, Hash, Shield, Pencil, X, Save, Loader2,
-  Mail, CheckCircle2, AlertCircle, Building2, Briefcase, Sparkles
+  Calendar,
+  Award,
+  BookOpen,
+  Hash,
+  Shield,
+  Pencil,
+  X,
+  Save,
+  Loader2,
+  Mail,
+  CheckCircle2,
+  AlertCircle,
+  Building2,
+  Briefcase,
+  Sparkles,
+  UserRound,
+  BadgeCheck,
 } from 'lucide-react';
 import { updateTeacherProfile } from '../../apis/teacher/teacher.service';
 
+interface UserData {
+  id?: string;
+  name?: string;
+  email?: string;
+  initials?: string;
+  schoolName?: string;
+  employeeNumber?: string;
+  qualification?: string;
+  specialization?: string;
+  joiningDate?: string;
+  role?: string;
+}
+
+interface ProfileForm {
+  employeeNumber: string;
+  qualification: string;
+  specialization: string;
+  joiningDate: string;
+}
+
+const safeParseStorage = <T,>(key: string, fallback: T): T => {
+  try {
+    const value = localStorage.getItem(key);
+
+    if (!value) {
+      return fallback;
+    }
+
+    return JSON.parse(value) as T;
+  } catch {
+    return fallback;
+  }
+};
+
 const TeacherProfile: React.FC = () => {
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const school = JSON.parse(localStorage.getItem('sms_selected_school') || '{}');
-  const schoolName = school.name || school.schoolName || user.schoolName || 'SMS Portal';
+  const user = useMemo(
+    () => safeParseStorage<UserData>('user', {}),
+    []
+  );
+
+  const school = useMemo(
+    () => safeParseStorage<Record<string, string>>('sms_selected_school', {}),
+    []
+  );
+
+  const schoolName =
+    school?.name ||
+    school?.schoolName ||
+    user?.schoolName ||
+    'SMS Portal';
+
+  const getInitialForm = (): ProfileForm => ({
+    employeeNumber: user?.employeeNumber || '',
+    qualification: user?.qualification || '',
+    specialization: user?.specialization || '',
+    joiningDate: user?.joiningDate
+      ? new Date(user.joiningDate).toISOString().split('T')[0]
+      : '',
+  });
 
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [form, setForm] = useState<ProfileForm>(getInitialForm);
 
-  const [form, setForm] = useState({
-    employeeNumber: user.employeeNumber || '',
-    qualification: user.qualification || '',
-    specialization: user.specialization || '',
-    joiningDate: user.joiningDate ? new Date(user.joiningDate).toISOString().split('T')[0] : '',
-  });
+  const handleChange = (
+    field: keyof ProfileForm,
+    value: string
+  ) => {
+    setForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
 
-  const handleChange = (field: string, value: string) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
+    if (error) {
+      setError('');
+    }
+
+    if (success) {
+      setSuccess('');
+    }
+  };
+
+  const handleEdit = () => {
+    setError('');
+    setSuccess('');
+    setEditing(true);
   };
 
   const handleCancel = () => {
-    setForm({
-      employeeNumber: user.employeeNumber || '',
-      qualification: user.qualification || '',
-      specialization: user.specialization || '',
-      joiningDate: user.joiningDate ? new Date(user.joiningDate).toISOString().split('T')[0] : '',
-    });
+    setForm(getInitialForm());
     setEditing(false);
     setError('');
     setSuccess('');
   };
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSave = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+
+    if (saving) {
+      return;
+    }
+
     setError('');
     setSuccess('');
+
     try {
       setSaving(true);
+
       const res = await updateTeacherProfile({
         employeeNumber: form.employeeNumber || undefined,
         qualification: form.qualification || undefined,
@@ -52,322 +138,580 @@ const TeacherProfile: React.FC = () => {
         joiningDate: form.joiningDate || undefined,
       });
 
-      const updated = { ...user, ...res?.user, ...res?.teacher, ...form };
-      localStorage.setItem('user', JSON.stringify(updated));
-      setSuccess('Profile updated successfully!');
+      const updatedUser: UserData = {
+        ...user,
+        ...res?.user,
+        ...res?.teacher,
+        ...form,
+      };
+
+      localStorage.setItem(
+        'user',
+        JSON.stringify(updatedUser)
+      );
+
+      setSuccess('Your faculty profile has been updated successfully.');
       setEditing(false);
-      setTimeout(() => setSuccess(''), 4000);
+
+      window.setTimeout(() => {
+        setSuccess('');
+      }, 4000);
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Failed to update profile. Please check your connection and try again.');
+      setError(
+        err?.response?.data?.message ||
+          'Failed to update your profile. Please check your connection and try again.'
+      );
     } finally {
       setSaving(false);
     }
   };
 
-  const formatDate = (val: string) => {
-    if (!val) return null;
+  const formatDate = (value: string) => {
+    if (!value) {
+      return null;
+    }
+
     try {
-      const date = new Date(val);
-      if (isNaN(date.getTime())) return null;
-      return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+      const date = new Date(value);
+
+      if (Number.isNaN(date.getTime())) {
+        return null;
+      }
+
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
     } catch {
       return null;
     }
   };
 
+  const displayName = user?.name || 'Teacher Profile';
+
+  const initials =
+    user?.initials ||
+    user?.name
+      ?.split(' ')
+      .map((part) => part.charAt(0))
+      .join('')
+      .slice(0, 2)
+      .toUpperCase() ||
+    'T';
+
   return (
-    <UserLayout role="TEACHER" pageTitle="Teacher Profile" activePath="/teacher-profile">
-      <div className="space-y-6 sm:space-y-8 max-w-5xl mx-auto">
+    <UserLayout
+      role="TEACHER"
+      pageTitle="Teacher Profile"
+      activePath="/teacher-profile"
+    >
+      <div className="mx-auto max-w-5xl space-y-6 pb-8 sm:space-y-8">
+        {/* =========================================================
+            PROFILE HERO
+        ========================================================= */}
+        <section className="relative overflow-hidden rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950/40 shadow-2xl sm:rounded-3xl">
+          {/* Ambient effects */}
+          <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-emerald-500/10 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-24 -left-20 h-64 w-64 rounded-full bg-teal-500/10 blur-3xl" />
 
-        {/* ─── Hero Profile Header Banner ─── */}
-        <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl border border-emerald-500/20 bg-gradient-to-br from-slate-900 via-slate-900/90 to-emerald-950/40 p-5 sm:p-7 md:p-8 shadow-2xl backdrop-blur-xl">
-          {/* Subtle Ambient Glow */}
-          <div className="absolute -top-24 -right-24 w-72 h-72 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
+          {/* Top accent */}
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-400/60 to-transparent" />
 
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
-              {/* Avatar */}
-              <div className="relative">
-                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl sm:rounded-3xl bg-gradient-to-tr from-emerald-600 via-emerald-500 to-teal-500 flex items-center justify-center text-white font-bold text-2xl sm:text-3xl shadow-xl shadow-emerald-600/25 border-2 border-white/10">
-                  {user.initials || user.name?.charAt(0) || 'T'}
+          <div className="relative z-10 p-5 sm:p-7 lg:p-8">
+            <div className="flex flex-col gap-7 lg:flex-row lg:items-center lg:justify-between">
+              {/* Identity */}
+              <div className="flex min-w-0 flex-col gap-5 sm:flex-row sm:items-center">
+                {/* Avatar */}
+                <div className="relative mx-auto shrink-0 sm:mx-0">
+                  <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-white/10 bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600 text-2xl font-bold text-white shadow-xl shadow-emerald-600/20 sm:h-24 sm:w-24 sm:rounded-3xl sm:text-3xl">
+                    {initials}
+                  </div>
+
+                  <div className="absolute -bottom-1.5 -right-1.5 flex h-7 w-7 items-center justify-center rounded-full border-4 border-slate-950 bg-emerald-500">
+                    <BadgeCheck
+                      size={13}
+                      className="text-white"
+                    />
+                  </div>
                 </div>
-                <div className="absolute -bottom-1 -right-1 p-1 bg-slate-900 rounded-full border border-slate-700">
-                  <span className="block w-3.5 h-3.5 rounded-full bg-emerald-400 ring-2 ring-slate-900" title="Active Faculty Member" />
+
+                {/* Details */}
+                <div className="min-w-0 text-center sm:text-left">
+                  <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+                    <h1 className="max-w-full truncate text-xl font-bold tracking-tight text-white sm:text-2xl lg:text-3xl">
+                      {displayName}
+                    </h1>
+
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-300">
+                      <Sparkles size={11} />
+                      Faculty
+                    </span>
+                  </div>
+
+                  <div className="mt-2 flex flex-col items-center gap-2 text-xs text-slate-400 sm:flex-row sm:flex-wrap sm:justify-start sm:gap-x-4">
+                    <span className="inline-flex max-w-full items-center gap-1.5 truncate">
+                      <Mail
+                        size={14}
+                        className="shrink-0 text-slate-500"
+                      />
+                      <span className="truncate">
+                        {user?.email || 'No email specified'}
+                      </span>
+                    </span>
+
+                    <span className="hidden text-slate-700 sm:inline">
+                      •
+                    </span>
+
+                    <span className="inline-flex max-w-full items-center gap-1.5 truncate">
+                      <Building2
+                        size={14}
+                        className="shrink-0 text-slate-500"
+                      />
+                      <span className="truncate">
+                        {schoolName}
+                      </span>
+                    </span>
+                  </div>
+
+                  {form.employeeNumber && (
+                    <div className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/10 bg-emerald-500/5 px-2.5 py-1">
+                      <Hash
+                        size={12}
+                        className="text-emerald-400/80"
+                      />
+                      <span className="font-mono text-[11px] text-emerald-300/90">
+                        Faculty ID:
+                      </span>
+                      <span className="font-mono text-[11px] font-semibold text-emerald-200">
+                        {form.employeeNumber}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* Title & Badges */}
-              <div className="space-y-1.5 min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white tracking-tight truncate">
-                    {user.name || 'Teacher Profile'}
-                  </h2>
-                  <span className="role-badge">Faculty</span>
-                </div>
+              {/* Header Actions */}
+              <div className="w-full lg:w-auto">
+                {!editing ? (
+                  <button
+                    type="button"
+                    onClick={handleEdit}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-5 py-2.5 text-xs font-semibold text-white shadow-lg shadow-emerald-600/20 transition-all hover:from-emerald-500 hover:to-teal-500 hover:shadow-emerald-500/25 active:scale-[0.98] sm:w-auto sm:text-sm"
+                  >
+                    <Pencil size={15} />
+                    Edit Profile
+                  </button>
+                ) : (
+                  <div className="flex w-full gap-2 sm:w-auto">
+                    <button
+                      type="button"
+                      onClick={handleCancel}
+                      disabled={saving}
+                      className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800 px-4 py-2.5 text-xs font-semibold text-slate-300 transition hover:bg-slate-700 hover:text-white disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none sm:text-sm"
+                    >
+                      <X size={15} />
+                      Cancel
+                    </button>
 
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs sm:text-sm text-slate-400">
-                  <span className="flex items-center gap-1.5 truncate">
-                    <Mail size={14} className="text-slate-500" />
-                    {user.email || 'No email specified'}
-                  </span>
-                  <span className="hidden sm:inline text-slate-700">•</span>
-                  <span className="flex items-center gap-1.5 truncate">
-                    <Building2 size={14} className="text-slate-500" />
-                    {schoolName}
-                  </span>
-                </div>
+                    <button
+                      type="button"
+                      onClick={() => handleSave()}
+                      disabled={saving}
+                      className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-5 py-2.5 text-xs font-semibold text-white shadow-lg shadow-emerald-600/20 transition hover:from-emerald-500 hover:to-teal-500 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none sm:text-sm"
+                    >
+                      {saving ? (
+                        <Loader2
+                          size={15}
+                          className="animate-spin"
+                        />
+                      ) : (
+                        <Save size={15} />
+                      )}
 
-                {form.employeeNumber && (
-                  <p className="text-xs font-mono text-emerald-300/80 pt-0.5">
-                    Faculty ID: <span className="font-semibold">{form.employeeNumber}</span>
-                  </p>
+                      {saving ? 'Saving...' : 'Save Changes'}
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
 
-            {/* Header Action Button */}
-            <div className="flex items-center gap-3 pt-2 md:pt-0">
-              {!editing ? (
-                <button
-                  type="button"
-                  onClick={() => setEditing(true)}
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-xs sm:text-sm bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-lg shadow-emerald-600/20 active:scale-[0.98] transition cursor-pointer"
-                >
-                  <Pencil size={15} /> Edit Profile
-                </button>
-              ) : (
-                <div className="flex items-center gap-2.5 w-full sm:w-auto">
+            {/* Editing indicator */}
+            {editing && (
+              <div className="mt-6 flex items-center gap-2 rounded-xl border border-emerald-500/15 bg-emerald-500/5 px-3.5 py-2.5">
+                <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]" />
+
+                <span className="text-[11px] font-medium text-emerald-300">
+                  Editing faculty profile information
+                </span>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* =========================================================
+            ALERTS
+        ========================================================= */}
+        {error && (
+          <div
+            role="alert"
+            className="flex items-start gap-3 rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-red-300 shadow-lg"
+          >
+            <AlertCircle
+              size={18}
+              className="mt-0.5 shrink-0 text-red-400"
+            />
+
+            <div className="min-w-0">
+              <p className="text-xs font-semibold sm:text-sm">
+                Update failed
+              </p>
+
+              <p className="mt-0.5 text-xs leading-5 text-red-300/80">
+                {error}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {success && (
+          <div
+            role="status"
+            className="flex items-start gap-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-emerald-300 shadow-lg"
+          >
+            <CheckCircle2
+              size={18}
+              className="mt-0.5 shrink-0 text-emerald-400"
+            />
+
+            <div className="min-w-0">
+              <p className="text-xs font-semibold sm:text-sm">
+                Profile updated
+              </p>
+
+              <p className="mt-0.5 text-xs leading-5 text-emerald-300/80">
+                {success}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* =========================================================
+            FORM
+        ========================================================= */}
+        <form
+          onSubmit={handleSave}
+          className="space-y-6 sm:space-y-8"
+        >
+          {/* =======================================================
+              PROFESSIONAL INFORMATION
+          ======================================================= */}
+          <section className="overflow-hidden rounded-2xl border border-slate-800/80 bg-slate-950/60 shadow-xl">
+            <div className="border-b border-slate-800/80 p-5 sm:p-6">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-400">
+                  <Briefcase size={18} />
+                </div>
+
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="text-base font-bold tracking-tight text-white sm:text-lg">
+                      Faculty & Employment
+                    </h2>
+
+                    {editing && (
+                      <span className="hidden rounded-md border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-[9px] font-semibold uppercase tracking-wider text-emerald-400 sm:inline-block">
+                        Editing
+                      </span>
+                    )}
+                  </div>
+
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    Professional credentials and academic qualifications
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-5 p-5 sm:grid-cols-2 sm:gap-6 sm:p-6">
+              {/* Employee Number */}
+              <ProfileField
+                label="Employee Number"
+                icon={<Hash size={16} />}
+                editing={editing}
+                value={form.employeeNumber}
+                placeholder="e.g. EMP-2024-019"
+                onChange={(value) =>
+                  handleChange('employeeNumber', value)
+                }
+                emptyText="Not specified"
+              />
+
+              {/* Joining Date */}
+              <ProfileField
+                label="Joining Date"
+                icon={<Calendar size={16} />}
+                editing={editing}
+                type="date"
+                value={form.joiningDate}
+                displayValue={
+                  formatDate(form.joiningDate) || undefined
+                }
+                onChange={(value) =>
+                  handleChange('joiningDate', value)
+                }
+                emptyText="Not specified"
+              />
+
+              {/* Qualification */}
+              <ProfileField
+                label="Highest Qualification"
+                icon={<Award size={16} />}
+                editing={editing}
+                value={form.qualification}
+                placeholder="e.g. M.Sc. Mathematics, B.Ed"
+                onChange={(value) =>
+                  handleChange('qualification', value)
+                }
+                emptyText="Not specified"
+              />
+
+              {/* Specialization */}
+              <ProfileField
+                label="Subject Specialization"
+                icon={<BookOpen size={16} />}
+                editing={editing}
+                value={form.specialization}
+                placeholder="e.g. Advanced Calculus, Mechanics"
+                onChange={(value) =>
+                  handleChange('specialization', value)
+                }
+                emptyText="Not specified"
+              />
+            </div>
+          </section>
+
+          {/* =======================================================
+              ACCOUNT INFORMATION
+          ======================================================= */}
+          <section className="overflow-hidden rounded-2xl border border-slate-800/80 bg-slate-950/60 shadow-xl">
+            <div className="border-b border-slate-800/80 p-5 sm:p-6">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-teal-500/20 bg-teal-500/10 text-teal-400">
+                  <Shield size={18} />
+                </div>
+
+                <div>
+                  <h2 className="text-base font-bold tracking-tight text-white sm:text-lg">
+                    Account & Department
+                  </h2>
+
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    Institutional system credentials and account status
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3 lg:p-6">
+              {/* Account ID */}
+              <InfoCard
+                label="Account ID"
+                value={user?.id || 'System Generated'}
+                icon={<Hash size={15} />}
+                mono={Boolean(user?.id)}
+              />
+
+              {/* Portal Role */}
+              <InfoCard
+                label="Portal Role"
+                value="Teacher / Faculty"
+                icon={<UserRound size={15} />}
+                accent
+              />
+
+              {/* Institution */}
+              <InfoCard
+                label="Institution"
+                value={schoolName}
+                icon={<Building2 size={15} />}
+              />
+            </div>
+          </section>
+
+          {/* =======================================================
+              EDITING SAVE BAR
+          ======================================================= */}
+          {editing && (
+            <div className="sticky bottom-4 z-30">
+              <div className="flex flex-col gap-3 rounded-2xl border border-emerald-500/20 bg-slate-900/95 p-3 shadow-2xl shadow-black/30 backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between sm:p-4">
+                <div className="hidden items-center gap-2 sm:flex">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-400">
+                    <Pencil size={14} />
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold text-slate-200">
+                      Unsaved changes
+                    </p>
+
+                    <p className="text-[10px] text-slate-500">
+                      Review your information before saving.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex w-full gap-2 sm:w-auto">
                   <button
                     type="button"
                     onClick={handleCancel}
                     disabled={saving}
-                    className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition cursor-pointer disabled:opacity-50"
+                    className="flex-1 rounded-xl border border-slate-700 bg-slate-800 px-4 py-2.5 text-xs font-semibold text-slate-300 transition hover:bg-slate-700 hover:text-white disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
                   >
-                    <X size={15} /> Cancel
+                    Cancel
                   </button>
+
                   <button
-                    type="button"
-                    onClick={handleSave}
+                    type="submit"
                     disabled={saving}
-                    className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-lg shadow-emerald-600/25 active:scale-[0.98] transition cursor-pointer disabled:opacity-50"
+                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-5 py-2.5 text-xs font-semibold text-white shadow-lg shadow-emerald-600/20 transition hover:from-emerald-500 hover:to-teal-500 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
                   >
-                    {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
-                    {saving ? 'Saving...' : 'Save Changes'}
+                    {saving ? (
+                      <Loader2
+                        size={15}
+                        className="animate-spin"
+                      />
+                    ) : (
+                      <Save size={15} />
+                    )}
+
+                    {saving ? 'Saving...' : 'Save Profile'}
                   </button>
                 </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* ─── Notification Alerts ─── */}
-        {error && (
-          <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/25 text-red-400 text-xs sm:text-sm flex items-start gap-3 shadow-lg animate-in fade-in">
-            <AlertCircle size={18} className="flex-shrink-0 mt-0.5" />
-            <span className="leading-relaxed">{error}</span>
-          </div>
-        )}
-        {success && (
-          <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-xs sm:text-sm flex items-start gap-3 shadow-lg animate-in fade-in">
-            <CheckCircle2 size={18} className="flex-shrink-0 mt-0.5" />
-            <span className="leading-relaxed">{success}</span>
-          </div>
-        )}
-
-        {/* ─── Form / View Sections ─── */}
-        <form onSubmit={handleSave} className="space-y-6 sm:space-y-8">
-
-          {/* Section 1: Professional Information */}
-          <div className="card">
-            <div className="flex items-center justify-between pb-4 sm:pb-5 border-b border-slate-800/80 mb-5 sm:mb-6">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center">
-                  <Briefcase size={18} />
-                </div>
-                <div>
-                  <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">Faculty & Employment Credentials</h3>
-                  <p className="text-xs text-slate-400">Institutional records, credentials, and academic qualifications</p>
-                </div>
               </div>
-              {editing && (
-                <span className="text-[11px] font-semibold text-emerald-400 uppercase tracking-wider bg-emerald-500/10 px-2.5 py-1 rounded-md border border-emerald-500/20 hidden sm:inline-block">
-                  Editing Mode
-                </span>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-              {/* Employee Number */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">
-                  Employee Number
-                </label>
-                {editing ? (
-                  <div className="relative">
-                    <Hash size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
-                    <input
-                      type="text"
-                      value={form.employeeNumber}
-                      onChange={(e) => handleChange('employeeNumber', e.target.value)}
-                      placeholder="e.g. EMP-2024-019"
-                      className="w-full bg-slate-950/80 border border-slate-800 hover:border-slate-700 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 rounded-xl pl-10 pr-4 py-2.5 sm:py-3 text-xs sm:text-sm text-slate-100 placeholder-slate-600 outline-none transition"
-                    />
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-3 p-3.5 rounded-xl bg-slate-900/60 border border-slate-800/80 min-h-[48px]">
-                    <Hash size={16} className="text-emerald-400/80 flex-shrink-0" />
-                    <span className="text-sm font-medium text-slate-200 truncate">
-                      {form.employeeNumber || <span className="text-slate-500 italic">Not specified</span>}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* Joining Date */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">
-                  Joining Date
-                </label>
-                {editing ? (
-                  <div className="relative">
-                    <Calendar size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
-                    <input
-                      type="date"
-                      value={form.joiningDate}
-                      onChange={(e) => handleChange('joiningDate', e.target.value)}
-                      className="w-full bg-slate-950/80 border border-slate-800 hover:border-slate-700 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 rounded-xl pl-10 pr-4 py-2.5 sm:py-3 text-xs sm:text-sm text-slate-100 outline-none transition scheme-dark"
-                    />
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-3 p-3.5 rounded-xl bg-slate-900/60 border border-slate-800/80 min-h-[48px]">
-                    <Calendar size={16} className="text-emerald-400/80 flex-shrink-0" />
-                    <span className="text-sm font-medium text-slate-200 truncate">
-                      {formatDate(form.joiningDate) || <span className="text-slate-500 italic">Not specified</span>}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* Qualification */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">
-                  Highest Qualification
-                </label>
-                {editing ? (
-                  <div className="relative">
-                    <Award size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
-                    <input
-                      type="text"
-                      value={form.qualification}
-                      onChange={(e) => handleChange('qualification', e.target.value)}
-                      placeholder="e.g. M.Sc. Mathematics, B.Ed"
-                      className="w-full bg-slate-950/80 border border-slate-800 hover:border-slate-700 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 rounded-xl pl-10 pr-4 py-2.5 sm:py-3 text-xs sm:text-sm text-slate-100 placeholder-slate-600 outline-none transition"
-                    />
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-3 p-3.5 rounded-xl bg-slate-900/60 border border-slate-800/80 min-h-[48px]">
-                    <Award size={16} className="text-emerald-400/80 flex-shrink-0" />
-                    <span className="text-sm font-medium text-slate-200 truncate">
-                      {form.qualification || <span className="text-slate-500 italic">Not specified</span>}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* Specialization */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">
-                  Subject Specialization
-                </label>
-                {editing ? (
-                  <div className="relative">
-                    <BookOpen size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
-                    <input
-                      type="text"
-                      value={form.specialization}
-                      onChange={(e) => handleChange('specialization', e.target.value)}
-                      placeholder="e.g. Advanced Calculus, Mechanics"
-                      className="w-full bg-slate-950/80 border border-slate-800 hover:border-slate-700 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 rounded-xl pl-10 pr-4 py-2.5 sm:py-3 text-xs sm:text-sm text-slate-100 placeholder-slate-600 outline-none transition"
-                    />
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-3 p-3.5 rounded-xl bg-slate-900/60 border border-slate-800/80 min-h-[48px]">
-                    <BookOpen size={16} className="text-emerald-400/80 flex-shrink-0" />
-                    <span className="text-sm font-medium text-slate-200 truncate">
-                      {form.specialization || <span className="text-slate-500 italic">Not specified</span>}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Section 2: Account & System Information (Read-Only) */}
-          <div className="card">
-            <div className="flex items-center gap-3 pb-4 sm:pb-5 border-b border-slate-800/80 mb-5 sm:mb-6">
-              <div className="w-9 h-9 rounded-xl bg-teal-500/10 border border-teal-500/20 text-teal-400 flex items-center justify-center">
-                <Shield size={18} />
-              </div>
-              <div>
-                <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">Account & Department Information</h3>
-                <p className="text-xs text-slate-400">Institutional system credentials and profile status</p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
-              <div className="space-y-1.5">
-                <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Account ID</span>
-                <div className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800/80">
-                  <p className="text-xs font-mono text-slate-300 truncate" title={user.id || 'N/A'}>
-                    {user.id || 'System Generated'}
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Portal Role</span>
-                <div className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800/80 flex items-center justify-between">
-                  <span className="text-sm font-semibold text-emerald-400">Teacher / Faculty</span>
-                  <Sparkles size={14} className="text-emerald-400" />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Institution</span>
-                <div className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800/80">
-                  <p className="text-sm font-medium text-slate-200 truncate">{schoolName}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Bottom Save bar in editing mode */}
-          {editing && (
-            <div className="sticky bottom-4 z-20 flex items-center justify-end gap-3 p-4 rounded-2xl bg-slate-900/95 border border-emerald-500/30 backdrop-blur-xl shadow-2xl animate-in slide-in-from-bottom-3">
-              <span className="text-xs text-slate-400 hidden sm:inline">You have unsaved changes</span>
-              <button
-                type="button"
-                onClick={handleCancel}
-                disabled={saving}
-                className="px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 transition cursor-pointer disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={saving}
-                className="inline-flex items-center gap-2 px-6 py-2 rounded-xl text-xs sm:text-sm font-semibold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-lg shadow-emerald-600/30 transition cursor-pointer disabled:opacity-50"
-              >
-                {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
-                {saving ? 'Saving...' : 'Save Profile'}
-              </button>
             </div>
           )}
         </form>
-
       </div>
     </UserLayout>
+  );
+};
+
+/* ===============================================================
+   REUSABLE PROFILE FIELD
+================================================================ */
+
+interface ProfileFieldProps {
+  label: string;
+  icon: React.ReactNode;
+  value: string;
+  displayValue?: string;
+  placeholder?: string;
+  emptyText?: string;
+  type?: 'text' | 'date';
+  editing: boolean;
+  onChange: (value: string) => void;
+}
+
+const ProfileField: React.FC<ProfileFieldProps> = ({
+  label,
+  icon,
+  value,
+  displayValue,
+  placeholder,
+  emptyText = 'Not specified',
+  type = 'text',
+  editing,
+  onChange,
+}) => {
+  return (
+    <div className="space-y-2">
+      <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 sm:text-xs">
+        {label}
+      </label>
+
+      {editing ? (
+        <div className="group relative">
+          <span className="pointer-events-none absolute left-3.5 top-1/2 z-10 -translate-y-1/2 text-slate-600 transition group-focus-within:text-emerald-400">
+            {icon}
+          </span>
+
+          <input
+            type={type}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={placeholder}
+            aria-label={label}
+            className="w-full rounded-xl border border-slate-800 bg-slate-950/80 py-3 pl-10 pr-4 text-xs text-slate-100 outline-none transition placeholder:text-slate-700 hover:border-slate-700 focus:border-emerald-500/60 focus:ring-2 focus:ring-emerald-500/10 sm:text-sm"
+          />
+        </div>
+      ) : (
+        <div className="flex min-h-[48px] items-center gap-3 rounded-xl border border-slate-800/80 bg-slate-900/50 p-3.5">
+          <span className="shrink-0 text-emerald-400/70">
+            {icon}
+          </span>
+
+          <span className="min-w-0 truncate text-sm font-medium text-slate-200">
+            {displayValue || value || (
+              <span className="italic text-slate-600">
+                {emptyText}
+              </span>
+            )}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+};
+
+/* ===============================================================
+   REUSABLE INFO CARD
+================================================================ */
+
+interface InfoCardProps {
+  label: string;
+  value: string;
+  icon: React.ReactNode;
+  accent?: boolean;
+  mono?: boolean;
+}
+
+const InfoCard: React.FC<InfoCardProps> = ({
+  label,
+  value,
+  icon,
+  accent = false,
+  mono = false,
+}) => {
+  return (
+    <div className="group rounded-xl border border-slate-800/80 bg-slate-900/50 p-4 transition hover:border-slate-700 hover:bg-slate-900/80">
+      <div className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-600">
+        <span className="text-slate-500">
+          {icon}
+        </span>
+
+        {label}
+      </div>
+
+      <div className="flex items-center justify-between gap-3">
+        <p
+          title={value}
+          className={`min-w-0 truncate text-sm font-semibold ${
+            accent ? 'text-emerald-400' : 'text-slate-200'
+          } ${mono ? 'font-mono text-xs' : ''}`}
+        >
+          {value}
+        </p>
+
+        {accent && (
+          <Sparkles
+            size={14}
+            className="shrink-0 text-emerald-400/70"
+          />
+        )}
+      </div>
+    </div>
   );
 };
 

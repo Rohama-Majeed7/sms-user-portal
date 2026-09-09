@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import {
-  LayoutDashboard, BookOpen, GraduationCap, Calendar, Bell,
-  Search, Menu, X, ChevronDown, LogOut, Settings,
-  Users, FileText, MessageSquare, ClipboardList, TrendingUp,
-  CheckSquare, CreditCard, Star, BarChart3
+  GraduationCap, Bell,
+  Search, Menu, X, ChevronDown, LogOut,
+  Users, User
 } from 'lucide-react';
 import type { UserRole } from '../types/role';
 import { logout } from '../apis/auth/auth.service';
@@ -12,75 +11,21 @@ import { useNavigate } from 'react-router-dom';
 // ─── Role nav configs ───────────────────────────────────────────
 const studentNav = [
   {
-    title: 'Overview',
+    title: 'Account',
     items: [
-      { icon: <LayoutDashboard size={18} />, label: 'Dashboard', href: '/dashboard' },
-      { icon: <TrendingUp size={18} />, label: 'My Progress', href: '/progress' },
-      { icon: <Bell size={18} />, label: 'Alerts', href: '/alerts', badge: '3' },
-    ],
-  },
-  {
-    title: 'Academics',
-    items: [
-      { icon: <BookOpen size={18} />, label: 'My Subjects', href: '/subjects' },
-      { icon: <ClipboardList size={18} />, label: 'Assignments', href: '/assignments', badge: '2' },
-      { icon: <Star size={18} />, label: 'Grades', href: '/grades' },
-      { icon: <CheckSquare size={18} />, label: 'Attendance', href: '/attendance' },
-    ],
-  },
-  {
-    title: 'Schedule',
-    items: [
-      { icon: <Calendar size={18} />, label: 'Timetable', href: '/timetable' },
-      { icon: <FileText size={18} />, label: 'Exams', href: '/exams' },
-    ],
-  },
-  {
-    title: 'More',
-    items: [
-      { icon: <MessageSquare size={18} />, label: 'Messages', href: '/messages', badge: '1' },
-      { icon: <CreditCard size={18} />, label: 'Fees', href: '/fees' },
-      { icon: <Settings size={18} />, label: 'Settings', href: '/settings' },
+      { icon: <User size={18} />, label: 'Profile', href: '/profile' },
     ],
   },
 ];
 
 const teacherNav = [
   {
-    title: 'Overview',
+    title: 'Account',
     items: [
-      { icon: <LayoutDashboard size={18} />, label: 'Dashboard', href: '/dashboard' },
-      { icon: <BarChart3 size={18} />, label: 'Analytics', href: '/analytics' },
-      { icon: <Bell size={18} />, label: 'Notifications', href: '/notifications', badge: '4' },
-    ],
-  },
-  {
-    title: 'Classroom',
-    items: [
-      { icon: <Users size={18} />, label: 'My Students', href: '/students' },
-      { icon: <BookOpen size={18} />, label: 'Subjects', href: '/subjects' },
-      { icon: <ClipboardList size={18} />, label: 'Assignments', href: '/assignments' },
-      { icon: <CheckSquare size={18} />, label: 'Attendance', href: '/attendance' },
-    ],
-  },
-  {
-    title: 'Assessment',
-    items: [
-      { icon: <Star size={18} />, label: 'Grade Book', href: '/grades' },
-      { icon: <FileText size={18} />, label: 'Exams', href: '/exams' },
-    ],
-  },
-  {
-    title: 'Tools',
-    items: [
-      { icon: <Calendar size={18} />, label: 'Schedule', href: '/schedule' },
-      { icon: <MessageSquare size={18} />, label: 'Messages', href: '/messages', badge: '2' },
-      { icon: <Settings size={18} />, label: 'Settings', href: '/settings' },
+      { icon: <User size={18} />, label: 'Profile', href: '/profile' },
     ],
   },
 ];
-
-
 
 const roleNavMap: Record<UserRole, typeof studentNav> = {
   STUDENT: studentNav,
@@ -175,7 +120,6 @@ const UserLayout: React.FC<UserLayoutProps> = ({
                 >
                   <span className="nav-icon">{item.icon}</span>
                   <span>{item.label}</span>
-                  {item.badge && <span className="nav-badge">{item.badge}</span>}
                 </a>
               ))}
             </div>
@@ -243,9 +187,7 @@ const UserLayout: React.FC<UserLayoutProps> = ({
                   <p className="text-xs text-slate-400">{user.email}</p>
                   <span className="role-badge mt-1.5">{meta.label}</span>
                 </div>
-                <a href="/settings" className="flex items-center gap-2 px-3 py-2.5 text-sm text-slate-300 hover:bg-slate-800 transition">
-                  <Settings size={14} /> Settings
-                </a>
+
                 <button onClick={handleLogout} className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-red-400 hover:bg-slate-800 transition">
                   <LogOut size={14} /> Sign Out
                 </button>

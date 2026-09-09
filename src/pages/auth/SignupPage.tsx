@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   ArrowRight,
-  Building2,
   Check,
   Eye,
   EyeOff,
@@ -15,7 +14,7 @@ import {
   UserPlus,
 } from 'lucide-react';
 import type { UserRole } from '../../types/role';
-import { signUp, schoolList } from '../../apis/auth/auth.service';
+import { signUp } from '../../apis/auth/auth.service';
 
 const SESSION_KEY = 'sms_signup_draft';
 
@@ -27,19 +26,6 @@ interface SignupDraft {
   selectedRole?: UserRole;
 }
 
-interface SelectedSchool {
-  id?: string | number;
-  _id?: string;
-  name?: string;
-  schoolName?: string;
-  username?: string;
-  email?: string;
-}
-
-// interface LocationState {
-//   from?: string;
-// }
-
 const getDraft = (): SignupDraft => {
   try {
     const saved = sessionStorage.getItem(SESSION_KEY);
@@ -47,16 +33,6 @@ const getDraft = (): SignupDraft => {
     return saved ? JSON.parse(saved) : {};
   } catch {
     return {};
-  }
-};
-
-const getSelectedSchool = (): SelectedSchool | null => {
-  try {
-    const saved = localStorage.getItem('sms_selected_school');
-
-    return saved ? JSON.parse(saved) : null;
-  } catch {
-    return null;
   }
 };
 
@@ -78,29 +54,7 @@ const SignupPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const [selectedSchool, setSelectedSchool] =
-    useState<SelectedSchool | null>(getSelectedSchool);
-  const [schools, setSchools] = useState<SelectedSchool[]>([]);
-
   const navigate = useNavigate();
-
-  useEffect(() => {
-    const fetchSchools = async () => {
-      try {
-        const response = await schoolList();
-        const data = Array.isArray(response)
-          ? response.filter((s: any) => s.role === 'ADMIN')
-          : [];
-        setSchools(data);
-        if (data.length > 0 && !selectedSchool) {
-          setSelectedSchool(data[0]);
-        }
-      } catch (err) {
-        console.error('Failed to load schools list:', err);
-      }
-    };
-    fetchSchools();
-  }, []);
 
   /*
    * Persist signup draft.
@@ -146,11 +100,6 @@ const SignupPage: React.FC = () => {
 
     setError('');
 
-    if (!selectedSchool) {
-      setError('Please select an educational institution to register with.');
-      return;
-    }
-
     if (!fullName.trim() || !email.trim() || !password) {
       setError('Please fill in all required fields.');
       return;
@@ -169,15 +118,11 @@ const SignupPage: React.FC = () => {
     try {
       setLoading(true);
 
-      const schoolId =
-        selectedSchool.id ?? selectedSchool._id;
-
       const res = await signUp({
         fullName: fullName.trim(),
         email: email.trim(),
         password,
         role: selectedRole,
-        schoolId,
       });
 
       localStorage.setItem(
@@ -289,55 +234,6 @@ const SignupPage: React.FC = () => {
             />
 
             <div className="p-5 sm:p-7 lg:p-8">
-              {/* School selection */}
-              <div className="mb-6">
-                <div className="mb-2 flex items-center justify-between">
-                  <label htmlFor="school-select" className="text-xs font-semibold uppercase tracking-wider text-slate-300">
-                    School / Institution
-                  </label>
-                  <span className="text-[11px] font-medium text-slate-500">
-                    {schools.length} available
-                  </span>
-                </div>
-
-                <div className="relative">
-                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
-                    <Building2 className="h-4 w-4" />
-                  </div>
-                  <select
-                    id="school-select"
-                    value={selectedSchool?.id ?? selectedSchool?._id ?? ''}
-                    onChange={(e) => {
-                      const matched = schools.find((s) => String(s.id ?? s._id) === e.target.value);
-                      if (matched) setSelectedSchool(matched);
-                    }}
-                    className={`w-full appearance-none rounded-xl border border-slate-700 bg-slate-950/85 py-3 pl-10 pr-10 text-xs sm:text-sm font-medium text-slate-100 outline-none transition hover:border-slate-600 cursor-pointer ${
-                      isTeacher
-                        ? 'focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
-                        : 'focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20'
-                    }`}
-                  >
-                    {schools.length === 0 && (
-                      <option value="">Loading institutions...</option>
-                    )}
-                    {schools.map((school, idx) => {
-                      const id = String(school.id ?? school._id ?? idx);
-                      const name = school.name || school.schoolName || school.username || school.email || `School #${idx + 1}`;
-                      return (
-                        <option key={id} value={id} className="bg-slate-900 text-slate-100">
-                          {name}
-                        </option>
-                      );
-                    })}
-                  </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400">
-                    <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-
               {/* Role selector */}
               <div className="mb-6">
                 <div className="mb-2.5 flex items-center justify-between">

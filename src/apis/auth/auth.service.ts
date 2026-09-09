@@ -1,14 +1,17 @@
 import api from "../api.ts"
 
 export const signUp = async (data: any) => {
-    const response = await api.post('auth/signup', {
+    const payload: any = {
         email: data.email,
         password: data.password,
         role: data.role,
         name: data.fullName,
-        schoolId: data.schoolId,
-    })
-    return response.data
+    };
+    if (data.schoolId) {
+        payload.schoolId = data.schoolId;
+    }
+    const response = await api.post('auth/signup', payload);
+    return response.data;
 }
 
 export const schoolList = async () => {

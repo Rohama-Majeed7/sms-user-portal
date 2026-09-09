@@ -1,227 +1,123 @@
-import React, { useState } from 'react';
+import React from 'react';
 import UserLayout from '../../layouts/UserLayout';
 import {
-  User, Calendar, MapPin, Phone, Shield, Hash, Pencil, X, Save, Loader2
+  Star, CheckSquare, BookOpen, Clock,
+  ArrowUpRight, TrendingUp, FileText, Bell
 } from 'lucide-react';
-import { updateStudentProfile } from '../../apis/student/student.service';
 
-const StudentDashboard: React.FC = () => {
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
+const stats = [
+  { label: 'GPA', value: '3.8', sub: 'Out of 4.0', color: 'bg-indigo-500/15', iconColor: 'text-indigo-400', icon: <Star size={22} /> },
+  { label: 'Attendance', value: '94%', sub: 'This semester', color: 'bg-sky-500/15', iconColor: 'text-sky-400', icon: <CheckSquare size={22} /> },
+  { label: 'Subjects', value: '7', sub: 'Active courses', color: 'bg-violet-500/15', iconColor: 'text-violet-400', icon: <BookOpen size={22} /> },
+  { label: 'Due Tasks', value: '2', sub: 'Assignments due', color: 'bg-amber-500/15', iconColor: 'text-amber-400', icon: <Clock size={22} /> },
+];
 
-  const [editing, setEditing] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+const subjects = [
+  { name: 'Mathematics', grade: 'A', score: 92, progress: 92 },
+  { name: 'Physics', grade: 'B+', score: 87, progress: 87 },
+  { name: 'English', grade: 'A-', score: 89, progress: 89 },
+  { name: 'History', grade: 'B', score: 83, progress: 83 },
+  { name: 'Computer Sci.', grade: 'A+', score: 97, progress: 97 },
+];
 
-  // Editable form state
-  const [form, setForm] = useState({
-    dateOfBirth: user.dateOfBirth ? new Date(user.dateOfBirth).toISOString().split('T')[0] : '',
-    gender: user.gender || '',
-    address: user.address || '',
-    guardianName: user.guardianName || '',
-    guardianPhone: user.guardianPhone || '',
-    admissionNumber: user.admissionNumber || '',
-  });
+const upcoming = [
+  { title: 'Math Assignment', due: 'Tomorrow', type: 'Assignment' },
+  { title: 'Physics Quiz', due: 'Friday', type: 'Quiz' },
+  { title: 'English Essay', due: 'Next Mon', type: 'Essay' },
+];
 
-  const handleChange = (field: string, value: string) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
-  };
+const StudentDashboard: React.FC = () => (
+  <UserLayout role="STUDENT" pageTitle="My Dashboard" activePath="/student-dashboard">
+    <div className="space-y-6">
 
-  const handleCancel = () => {
-    setForm({
-      dateOfBirth: user.dateOfBirth ? new Date(user.dateOfBirth).toISOString().split('T')[0] : '',
-      gender: user.gender || '',
-      address: user.address || '',
-      guardianName: user.guardianName || '',
-      guardianPhone: user.guardianPhone || '',
-      admissionNumber: user.admissionNumber || '',
-    });
-    setEditing(false);
-    setError('');
-    setSuccess('');
-  };
-
-  const handleSave = async () => {
-    setError('');
-    setSuccess('');
-    try {
-      setSaving(true);
-      const res = await updateStudentProfile({
-        dateOfBirth: form.dateOfBirth || undefined,
-        gender: form.gender || undefined,
-        address: form.address || undefined,
-        guardianName: form.guardianName || undefined,
-        guardianPhone: form.guardianPhone || undefined,
-        admissionNumber: form.admissionNumber || undefined,
-      });
-      // Update localStorage with new data
-      const updated = { ...user, ...res.user, ...res.student, ...form };
-      localStorage.setItem('user', JSON.stringify(updated));
-      setSuccess('Profile updated successfully!');
-      setEditing(false);
-      setTimeout(() => setSuccess(''), 3000);
-    } catch (err: any) {
-      setError(err?.response?.data?.message || 'Failed to update profile. Please try again.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const formatDate = (val: string) => {
-    if (!val) return '—';
-    return new Date(val).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-  };
-
-  const profileFields = [
-    { icon: <Hash size={18} />, label: 'Admission Number', key: 'admissionNumber', type: 'text' },
-    { icon: <Calendar size={18} />, label: 'Date of Birth', key: 'dateOfBirth', type: 'date' },
-    { icon: <Shield size={18} />, label: 'Gender', key: 'gender', type: 'select', options: ['MALE', 'FEMALE', 'OTHER'] },
-    { icon: <MapPin size={18} />, label: 'Address', key: 'address', type: 'text' },
-    { icon: <User size={18} />, label: 'Guardian Name', key: 'guardianName', type: 'text' },
-    { icon: <Phone size={18} />, label: 'Guardian Phone', key: 'guardianPhone', type: 'tel' },
-  ];
-
-  return (
-    <UserLayout role="STUDENT" pageTitle="My Profile" activePath="/profile">
-      <div className="space-y-6">
-
-        {/* Profile Header Card */}
-        <div className="card" style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.2), rgba(129,140,248,0.1))', borderColor: 'rgba(99,102,241,0.3)' }}>
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-bold text-white" style={{ background: 'linear-gradient(135deg, var(--role-primary), var(--role-accent))' }}>
-              {user.initials || user.name?.charAt(0) || 'S'}
-            </div>
-            <div className="flex-1 min-w-0">
-              <h2 className="text-white font-bold text-xl mb-0.5">{user.name || 'Student'}</h2>
-              <p className="text-slate-400 text-sm">{user.email || '—'}</p>
-              <span className="role-badge mt-1.5">Student</span>
-            </div>
+      {/* Welcome */}
+      <div className="card" style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.2), rgba(129,140,248,0.1))', borderColor: 'rgba(99,102,241,0.3)' }}>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-white font-bold text-xl mb-1">Welcome back 👋</h2>
+            <p className="text-slate-400 text-sm">You have 2 assignments due this week. Keep it up!</p>
           </div>
+          <TrendingUp size={42} className="text-indigo-400 opacity-30 hidden md:block" />
         </div>
+      </div>
 
-        {/* Alerts */}
-        {error && (
-          <div className="p-3.5 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs sm:text-sm flex items-center gap-2.5">
-            <span className="w-2 h-2 rounded-full bg-red-400 flex-shrink-0 animate-pulse" />
-            <span>{error}</span>
+      {/* Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {stats.map((s) => (
+          <div key={s.label} className="stat-card">
+            <div className={`stat-icon ${s.color}`}><span className={s.iconColor}>{s.icon}</span></div>
+            <div className="flex-1 min-w-0">
+              <p className="text-slate-400 text-xs mb-0.5">{s.label}</p>
+              <p className="text-white font-bold text-xl">{s.value}</p>
+              <p className="text-slate-500 text-xs mt-0.5">{s.sub}</p>
+            </div>
           </div>
-        )}
-        {success && (
-          <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs sm:text-sm flex items-center gap-2.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0" />
-            <span>{success}</span>
-          </div>
-        )}
+        ))}
+      </div>
 
-        {/* Profile Details */}
-        <div className="card">
+      {/* Grid */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+
+        {/* Subject Progress */}
+        <div className="xl:col-span-2 card">
           <div className="flex items-center justify-between mb-5">
             <div>
-              <h3 className="text-white font-semibold text-base mb-1">Personal Information</h3>
-              <p className="text-slate-500 text-xs">Your student profile details</p>
+              <h3 className="text-white font-semibold text-base">Subject Performance</h3>
+              <p className="text-slate-500 text-xs">Current semester grades</p>
             </div>
-            {!editing ? (
-              <button
-                onClick={() => setEditing(true)}
-                className="flex items-center gap-1.5 text-xs font-semibold py-2 px-3.5 rounded-xl transition cursor-pointer"
-                style={{ background: 'var(--role-bg)', color: 'var(--role-accent)', border: '1px solid var(--role-border)' }}
-              >
-                <Pencil size={14} /> Edit
-              </button>
-            ) : (
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handleCancel}
-                  disabled={saving}
-                  className="flex items-center gap-1.5 text-xs font-semibold py-2 px-3.5 rounded-xl bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700 transition cursor-pointer disabled:opacity-50"
-                >
-                  <X size={14} /> Cancel
-                </button>
-                <button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="flex items-center gap-1.5 text-xs font-semibold py-2 px-3.5 rounded-xl text-white transition cursor-pointer disabled:opacity-50"
-                  style={{ background: 'var(--role-primary)' }}
-                >
-                  {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-                  {saving ? 'Saving...' : 'Save'}
-                </button>
-              </div>
-            )}
+            <button className="btn-primary text-xs py-1.5 px-3"><Star size={13} /> Full Report</button>
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {profileFields.map((field) => (
-              <div key={field.key} className="flex items-start gap-3 p-3.5 rounded-xl bg-slate-800/50 border border-slate-700/50">
-                <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: 'var(--role-bg)' }}>
-                  <span style={{ color: 'var(--role-accent)' }}>{field.icon}</span>
+          <div className="space-y-4">
+            {subjects.map((s) => (
+              <div key={s.name}>
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-white">{s.name}</span>
+                    <span className="badge badge-info text-xs">{s.grade}</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-emerald-400 text-xs font-semibold">
+                    <ArrowUpRight size={13} />{s.score}%
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-slate-500 mb-1">{field.label}</p>
-                  {editing ? (
-                    field.type === 'select' ? (
-                      <select
-                        value={form[field.key as keyof typeof form]}
-                        onChange={(e) => handleChange(field.key, e.target.value)}
-                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500 transition appearance-none cursor-pointer"
-                      >
-                        <option value="">Select...</option>
-                        {field.options?.map((opt) => (
-                          <option key={opt} value={opt}>{opt.charAt(0) + opt.slice(1).toLowerCase()}</option>
-                        ))}
-                      </select>
-                    ) : (
-                      <input
-                        type={field.type}
-                        value={form[field.key as keyof typeof form]}
-                        onChange={(e) => handleChange(field.key, e.target.value)}
-                        placeholder={`Enter ${field.label.toLowerCase()}`}
-                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-600 outline-none focus:border-indigo-500 transition"
-                      />
-                    )
-                  ) : (
-                    <p className="text-sm font-medium text-white truncate">
-                      {field.type === 'date'
-                        ? formatDate(form[field.key as keyof typeof form])
-                        : (form[field.key as keyof typeof form] || '—')}
-                    </p>
-                  )}
+                <div className="progress-bar">
+                  <div className="progress-fill" style={{ width: `${s.progress}%` }} />
                 </div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Account Info (read-only) */}
+        {/* Upcoming Tasks */}
         <div className="card">
-          <h3 className="text-white font-semibold text-base mb-1">Account Information</h3>
-          <p className="text-slate-500 text-xs mb-5">Your portal account details</p>
+          <h3 className="text-white font-semibold text-base mb-1">Upcoming Tasks</h3>
+          <p className="text-slate-500 text-xs mb-4">Due soon</p>
+          <div className="space-y-3">
+            {upcoming.map((t) => (
+              <div key={t.title} className="flex items-center gap-3 p-3 rounded-xl bg-slate-800/50 border border-slate-700/50">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'var(--role-bg)' }}>
+                  <FileText size={14} style={{ color: 'var(--role-accent)' }} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-white truncate">{t.title}</p>
+                  <p className="text-xs text-slate-500">Due: {t.due}</p>
+                </div>
+                <span className="badge badge-warning text-xs">{t.type}</span>
+              </div>
+            ))}
+          </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="flex items-start gap-3 p-3.5 rounded-xl bg-slate-800/50 border border-slate-700/50">
-              <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'var(--role-bg)' }}>
-                <span style={{ color: 'var(--role-accent)' }}><User size={18} /></span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs text-slate-500 mb-0.5">User ID</p>
-                <p className="text-sm font-medium text-white truncate">{user.id || '—'}</p>
-              </div>
+          {/* Announcements */}
+          <div className="mt-4 p-3 rounded-xl" style={{ background: 'var(--role-bg)', border: '1px solid var(--role-border)' }}>
+            <div className="flex items-center gap-2 mb-2">
+              <Bell size={13} style={{ color: 'var(--role-accent)' }} />
+              <p className="text-xs font-semibold" style={{ color: 'var(--role-accent)' }}>Announcement</p>
             </div>
-            <div className="flex items-start gap-3 p-3.5 rounded-xl bg-slate-800/50 border border-slate-700/50">
-              <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'var(--role-bg)' }}>
-                <span style={{ color: 'var(--role-accent)' }}><Shield size={18} /></span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs text-slate-500 mb-0.5">Role</p>
-                <p className="text-sm font-medium text-white">Student</p>
-              </div>
-            </div>
+            <p className="text-slate-300 text-xs">Mid-term exams scheduled for Oct 15–20. Check your timetable.</p>
           </div>
         </div>
-
       </div>
-    </UserLayout>
-  );
-};
+    </div>
+  </UserLayout>
+);
 
 export default StudentDashboard;

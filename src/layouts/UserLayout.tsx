@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  GraduationCap, Bell,
+  GraduationCap, Bell, LayoutDashboard,
   Search, Menu, X, ChevronDown, LogOut,
   Users, User
 } from 'lucide-react';
@@ -11,18 +11,20 @@ import { useNavigate } from 'react-router-dom';
 // ─── Role nav configs ───────────────────────────────────────────
 const studentNav = [
   {
-    title: 'Account',
+    title: 'Menu',
     items: [
-      { icon: <User size={18} />, label: 'Profile', href: '/profile' },
+      { icon: <LayoutDashboard size={18} />, label: 'Dashboard', href: '/student-dashboard' },
+      { icon: <User size={18} />, label: 'Profile', href: '/student-profile' },
     ],
   },
 ];
 
 const teacherNav = [
   {
-    title: 'Account',
+    title: 'Menu',
     items: [
-      { icon: <User size={18} />, label: 'Profile', href: '/profile' },
+      { icon: <LayoutDashboard size={18} />, label: 'Dashboard', href: '/teacher-dashboard' },
+      { icon: <User size={18} />, label: 'Profile', href: '/teacher-profile' },
     ],
   },
 ];

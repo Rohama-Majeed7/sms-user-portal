@@ -5,7 +5,9 @@ import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 import VerifyEmailPage from './pages/auth/VerifyEmailPage';
 import SchoolSelector from './pages/auth/SchoolSelector';
 import StudentDashboard from './pages/student/StudentDashboard';
+import StudentProfile from './pages/student/StudentProfile';
 import TeacherDashboard from './pages/teacher/TeacherDashboard';
+import TeacherProfile from './pages/teacher/TeacherProfile';
 
 
 // ─── Protected Route Guard ───────────────────────────────────────
@@ -34,8 +36,9 @@ const App = () => {
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route path="/student-dashboard" element={<ProtectedRoute element={<StudentDashboard />} />} />
+        <Route path="/student-profile" element={<ProtectedRoute element={<StudentProfile />} />} />
         <Route path="/teacher-dashboard" element={<ProtectedRoute element={<TeacherDashboard />} />} />
-
+        <Route path="/teacher-profile" element={<ProtectedRoute element={<TeacherProfile />} />} />
         <Route path="*" element={<Navigate to="/select-school" replace />} />
       </Routes>
     </BrowserRouter>

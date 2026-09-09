@@ -1,21 +1,84 @@
-import React from 'react';
+import React, { useState } from 'react';
 import UserLayout from '../../layouts/UserLayout';
 import {
-  User, Calendar, MapPin, Phone, Shield, Hash
+  User, Calendar, MapPin, Phone, Shield, Hash, Pencil, X, Save, Loader2
 } from 'lucide-react';
+import { updateStudentProfile } from '../../apis/student/student.service';
 
 const StudentDashboard: React.FC = () => {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
-  // Profile fields from the Student model
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  // Editable form state
+  const [form, setForm] = useState({
+    dateOfBirth: user.dateOfBirth ? new Date(user.dateOfBirth).toISOString().split('T')[0] : '',
+    gender: user.gender || '',
+    address: user.address || '',
+    guardianName: user.guardianName || '',
+    guardianPhone: user.guardianPhone || '',
+    admissionNumber: user.admissionNumber || '',
+  });
+
+  const handleChange = (field: string, value: string) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleCancel = () => {
+    setForm({
+      dateOfBirth: user.dateOfBirth ? new Date(user.dateOfBirth).toISOString().split('T')[0] : '',
+      gender: user.gender || '',
+      address: user.address || '',
+      guardianName: user.guardianName || '',
+      guardianPhone: user.guardianPhone || '',
+      admissionNumber: user.admissionNumber || '',
+    });
+    setEditing(false);
+    setError('');
+    setSuccess('');
+  };
+
+  const handleSave = async () => {
+    setError('');
+    setSuccess('');
+    try {
+      setSaving(true);
+      const res = await updateStudentProfile({
+        dateOfBirth: form.dateOfBirth || undefined,
+        gender: form.gender || undefined,
+        address: form.address || undefined,
+        guardianName: form.guardianName || undefined,
+        guardianPhone: form.guardianPhone || undefined,
+        admissionNumber: form.admissionNumber || undefined,
+      });
+      // Update localStorage with new data
+      const updated = { ...user, ...res.user, ...res.student, ...form };
+      localStorage.setItem('user', JSON.stringify(updated));
+      setSuccess('Profile updated successfully!');
+      setEditing(false);
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err: any) {
+      setError(err?.response?.data?.message || 'Failed to update profile. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const formatDate = (val: string) => {
+    if (!val) return '—';
+    return new Date(val).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  };
+
   const profileFields = [
-    { icon: <User size={18} />, label: 'Full Name', value: user.name || '—' },
-    { icon: <Hash size={18} />, label: 'Admission Number', value: user.admissionNumber || '—' },
-    { icon: <Calendar size={18} />, label: 'Date of Birth', value: user.dateOfBirth ? new Date(user.dateOfBirth).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '—' },
-    { icon: <Shield size={18} />, label: 'Gender', value: user.gender || '—' },
-    { icon: <MapPin size={18} />, label: 'Address', value: user.address || '—' },
-    { icon: <User size={18} />, label: 'Guardian Name', value: user.guardianName || '—' },
-    { icon: <Phone size={18} />, label: 'Guardian Phone', value: user.guardianPhone || '—' },
+    { icon: <Hash size={18} />, label: 'Admission Number', key: 'admissionNumber', type: 'text' },
+    { icon: <Calendar size={18} />, label: 'Date of Birth', key: 'dateOfBirth', type: 'date' },
+    { icon: <Shield size={18} />, label: 'Gender', key: 'gender', type: 'select', options: ['MALE', 'FEMALE', 'OTHER'] },
+    { icon: <MapPin size={18} />, label: 'Address', key: 'address', type: 'text' },
+    { icon: <User size={18} />, label: 'Guardian Name', key: 'guardianName', type: 'text' },
+    { icon: <Phone size={18} />, label: 'Guardian Phone', key: 'guardianPhone', type: 'tel' },
   ];
 
   return (
@@ -36,27 +99,100 @@ const StudentDashboard: React.FC = () => {
           </div>
         </div>
 
+        {/* Alerts */}
+        {error && (
+          <div className="p-3.5 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs sm:text-sm flex items-center gap-2.5">
+            <span className="w-2 h-2 rounded-full bg-red-400 flex-shrink-0 animate-pulse" />
+            <span>{error}</span>
+          </div>
+        )}
+        {success && (
+          <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs sm:text-sm flex items-center gap-2.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0" />
+            <span>{success}</span>
+          </div>
+        )}
+
         {/* Profile Details */}
         <div className="card">
-          <h3 className="text-white font-semibold text-base mb-1">Personal Information</h3>
-          <p className="text-slate-500 text-xs mb-5">Your student profile details</p>
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <h3 className="text-white font-semibold text-base mb-1">Personal Information</h3>
+              <p className="text-slate-500 text-xs">Your student profile details</p>
+            </div>
+            {!editing ? (
+              <button
+                onClick={() => setEditing(true)}
+                className="flex items-center gap-1.5 text-xs font-semibold py-2 px-3.5 rounded-xl transition cursor-pointer"
+                style={{ background: 'var(--role-bg)', color: 'var(--role-accent)', border: '1px solid var(--role-border)' }}
+              >
+                <Pencil size={14} /> Edit
+              </button>
+            ) : (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleCancel}
+                  disabled={saving}
+                  className="flex items-center gap-1.5 text-xs font-semibold py-2 px-3.5 rounded-xl bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700 transition cursor-pointer disabled:opacity-50"
+                >
+                  <X size={14} /> Cancel
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="flex items-center gap-1.5 text-xs font-semibold py-2 px-3.5 rounded-xl text-white transition cursor-pointer disabled:opacity-50"
+                  style={{ background: 'var(--role-primary)' }}
+                >
+                  {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                  {saving ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+            )}
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {profileFields.map((field) => (
-              <div key={field.label} className="flex items-start gap-3 p-3.5 rounded-xl bg-slate-800/50 border border-slate-700/50">
-                <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'var(--role-bg)' }}>
+              <div key={field.key} className="flex items-start gap-3 p-3.5 rounded-xl bg-slate-800/50 border border-slate-700/50">
+                <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: 'var(--role-bg)' }}>
                   <span style={{ color: 'var(--role-accent)' }}>{field.icon}</span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs text-slate-500 mb-0.5">{field.label}</p>
-                  <p className="text-sm font-medium text-white truncate">{field.value}</p>
+                  <p className="text-xs text-slate-500 mb-1">{field.label}</p>
+                  {editing ? (
+                    field.type === 'select' ? (
+                      <select
+                        value={form[field.key as keyof typeof form]}
+                        onChange={(e) => handleChange(field.key, e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500 transition appearance-none cursor-pointer"
+                      >
+                        <option value="">Select...</option>
+                        {field.options?.map((opt) => (
+                          <option key={opt} value={opt}>{opt.charAt(0) + opt.slice(1).toLowerCase()}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type={field.type}
+                        value={form[field.key as keyof typeof form]}
+                        onChange={(e) => handleChange(field.key, e.target.value)}
+                        placeholder={`Enter ${field.label.toLowerCase()}`}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-600 outline-none focus:border-indigo-500 transition"
+                      />
+                    )
+                  ) : (
+                    <p className="text-sm font-medium text-white truncate">
+                      {field.type === 'date'
+                        ? formatDate(form[field.key as keyof typeof form])
+                        : (form[field.key as keyof typeof form] || '—')}
+                    </p>
+                  )}
                 </div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Account Info */}
+        {/* Account Info (read-only) */}
         <div className="card">
           <h3 className="text-white font-semibold text-base mb-1">Account Information</h3>
           <p className="text-slate-500 text-xs mb-5">Your portal account details</p>

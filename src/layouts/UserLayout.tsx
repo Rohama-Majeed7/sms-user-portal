@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   GraduationCap,
-  Bell,
   LayoutDashboard,
   Search,
   Menu,
@@ -12,25 +11,26 @@ import {
   User,
   ShieldCheck,
   Building2,
+  BookOpen,
 } from 'lucide-react';
 import type { UserRole } from '../types/role';
 import { logout } from '../apis/auth/auth.service';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 
 // ─── Role nav configs ────────────────────────────────────────────
 
 const studentNav = [
   {
-    title: 'Navigation',
+    title: 'Academics',
     items: [
       {
-        icon: <LayoutDashboard size={18} />,
+        icon: LayoutDashboard,
         label: 'Dashboard',
         href: '/student-dashboard',
       },
       {
-        icon: <User size={18} />,
-        label: 'Profile',
+        icon: User,
+        label: 'My Profile',
         href: '/student-profile',
       },
     ],
@@ -39,16 +39,16 @@ const studentNav = [
 
 const teacherNav = [
   {
-    title: 'Navigation',
+    title: 'Faculty Portal',
     items: [
       {
-        icon: <LayoutDashboard size={18} />,
+        icon: LayoutDashboard,
         label: 'Dashboard',
         href: '/teacher-dashboard',
       },
       {
-        icon: <User size={18} />,
-        label: 'Profile',
+        icon: User,
+        label: 'Faculty Profile',
         href: '/teacher-profile',
       },
     ],
@@ -63,27 +63,34 @@ const roleNavMap: Record<UserRole, typeof studentNav> = {
 const roleMeta: Record<
   UserRole,
   {
-    theme: string;
     label: string;
-    icon: React.ReactNode;
-    color: string;
+    icon: React.ElementType;
+    badgeBg: string;
+    badgeText: string;
+    activeBg: string;
+    activeText: string;
+    accentColor: string;
   }
 > = {
   STUDENT: {
-    theme: 'theme-student',
     label: 'Student',
-    icon: <GraduationCap size={20} />,
-    color: '#818cf8',
+    icon: GraduationCap,
+    badgeBg: 'bg-indigo-50 border-indigo-200/80',
+    badgeText: 'text-indigo-700',
+    activeBg: 'bg-indigo-50 text-indigo-700',
+    activeText: 'text-indigo-700',
+    accentColor: '#4f46e5',
   },
   TEACHER: {
-    theme: 'theme-teacher',
-    label: 'Teacher',
-    icon: <Users size={20} />,
-    color: '#34d399',
+    label: ' Faculty',
+    icon: Users,
+    badgeBg: 'bg-emerald-50 border-emerald-200/80',
+    badgeText: 'text-emerald-700',
+    activeBg: 'bg-emerald-50 text-emerald-700',
+    activeText: 'text-emerald-700',
+    accentColor: '#059669',
   },
 };
-
-// ─── Layout Component ────────────────────────────────────────────
 
 interface UserLayoutProps {
   children: React.ReactNode;
@@ -92,17 +99,20 @@ interface UserLayoutProps {
   activePath?: string;
 }
 
-const UserLayout: React.FC<UserLayoutProps> = ({
+export const UserLayout: React.FC<UserLayoutProps> = ({
   children,
   role,
   pageTitle = 'Dashboard',
-  activePath = '/student-dashboard',
+  activePath,
 }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const currentPath = activePath || location.pathname;
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const school = JSON.parse(localStorage.getItem('sms_selected_school') || 'null');
@@ -110,6 +120,7 @@ const UserLayout: React.FC<UserLayoutProps> = ({
 
   const nav = roleNavMap[role];
   const meta = roleMeta[role];
+  const RoleIcon = meta.icon;
 
   // Close profile dropdown on outside click
   useEffect(() => {
@@ -123,11 +134,22 @@ const UserLayout: React.FC<UserLayoutProps> = ({
     };
 
     document.addEventListener('mousedown', handleClickOutside);
-
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+
+  // Prevent scroll when mobile sidebar is open
+  useEffect(() => {
+    if (sidebarOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [sidebarOpen]);
 
   const handleLogout = async () => {
     try {
@@ -142,36 +164,23 @@ const UserLayout: React.FC<UserLayoutProps> = ({
     }
   };
 
+  const userInitials =
+    user.initials ||
+    (user.name
+      ? user.name
+          .split(' ')
+          .map((n: string) => n[0])
+          .join('')
+          .slice(0, 2)
+          .toUpperCase()
+      : 'U');
+
   return (
-    <div
-      className={`relative min-h-screen overflow-x-hidden bg-slate-950 text-slate-100 ${meta.theme}`}
-    >
-      {/* Background decoration */}
-      <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-        <div
-          className="absolute -left-32 -top-32 h-96 w-96 rounded-full blur-3xl opacity-[0.08]"
-          style={{ background: meta.color }}
-        />
-
-        <div
-          className="absolute -bottom-40 -right-32 h-[28rem] w-[28rem] rounded-full blur-3xl opacity-[0.06]"
-          style={{ background: meta.color }}
-        />
-
-        <div
-          className="absolute inset-0 opacity-[0.025]"
-          style={{
-            backgroundImage:
-              'linear-gradient(rgba(255,255,255,0.8) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.8) 1px, transparent 1px)',
-            backgroundSize: '42px 42px',
-          }}
-        />
-      </div>
-
-      {/* ── Mobile Overlay ── */}
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex">
+      {/* ── Mobile Sidebar Overlay ── */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-xs transition-opacity lg:hidden"
           onClick={() => setSidebarOpen(false)}
           aria-hidden="true"
         />
@@ -179,128 +188,86 @@ const UserLayout: React.FC<UserLayoutProps> = ({
 
       {/* ── Sidebar ── */}
       <aside
-        className={`sidebar ${sidebarOpen ? 'open' : ''}`}
+        className={`fixed top-0 bottom-0 left-0 z-50 w-64 bg-white border-r border-slate-200/80 flex flex-col transition-transform duration-200 ease-in-out lg:translate-x-0 ${
+          sidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'
+        }`}
         aria-label={`${meta.label} navigation`}
       >
-        {/* Logo */}
-        <div className="sidebar-logo">
-          <div
-            className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl shadow-lg"
-            style={{
-              background: `linear-gradient(135deg, ${meta.color}, ${meta.color}99)`,
-              boxShadow: `0 8px 24px ${meta.color}22`,
-            }}
-          >
-            <div className="absolute inset-0 bg-white/10" />
-            <span className="relative text-white">{meta.icon}</span>
-          </div>
+        {/* Sidebar Header / Logo */}
+        <div className="h-16 px-5 border-b border-slate-100 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-xs">
+              <BookOpen className="h-5 w-5" />
+            </div>
 
-          <div className="min-w-0">
-            <p className="truncate text-sm font-bold tracking-tight text-white">
-              SMS Portal
-            </p>
-
-            <p
-              className="truncate text-[11px] font-semibold uppercase tracking-[0.12em]"
-              style={{ color: meta.color }}
-            >
-              {meta.label} Access
-            </p>
+            <div className="min-w-0">
+              <h1 className="text-sm font-bold tracking-tight text-slate-900 truncate">
+                SMS Portal
+              </h1>
+              <p className="text-[11px] font-medium text-slate-500 truncate">
+                School Management
+              </p>
+            </div>
           </div>
 
           <button
             type="button"
-            className="ml-auto rounded-lg p-1.5 text-slate-400 transition hover:bg-white/5 hover:text-white lg:hidden"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 lg:hidden"
             onClick={() => setSidebarOpen(false)}
             aria-label="Close sidebar"
           >
-            <X size={19} />
+            <X className="h-5 w-5" />
           </button>
         </div>
 
-        {/* Role Badge */}
-        <div className="px-4 py-4">
-          <div
-            className="flex items-center justify-between rounded-xl border px-3 py-2.5"
-            style={{
-              background: `${meta.color}08`,
-              borderColor: `${meta.color}18`,
-            }}
-          >
-            <div className="flex items-center gap-2.5">
-              <span
-                className="flex h-7 w-7 items-center justify-center rounded-lg"
-                style={{
-                  background: `${meta.color}15`,
-                  color: meta.color,
-                }}
-              >
-                {React.cloneElement(
-                  meta.icon as React.ReactElement<{ size?: number }>,
-                  { size: 14 }
-                )}
-              </span>
-
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-                  Current role
+        {/* Role pill indicator */}
+        <div className="px-4 pt-4 pb-2">
+          <div className={`flex items-center justify-between px-3 py-2 rounded-xl border ${meta.badgeBg}`}>
+            <div className="flex items-center gap-2 min-w-0">
+              <RoleIcon className={`h-4 w-4 shrink-0 ${meta.badgeText}`} />
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                  Active Role
                 </p>
-
-                <p className="text-xs font-semibold text-slate-200">
+                <p className={`text-xs font-semibold truncate ${meta.badgeText}`}>
                   {meta.label}
                 </p>
               </div>
             </div>
-
-            <ShieldCheck
-              size={15}
-              style={{ color: meta.color }}
-              className="opacity-70"
-            />
+            <ShieldCheck className={`h-4 w-4 shrink-0 ${meta.badgeText} opacity-80`} />
           </div>
         </div>
 
-        {/* Navigation */}
-        <nav className="sidebar-nav flex-1">
+        {/* Navigation links */}
+        <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-6">
           {nav.map((section) => (
-            <div key={section.title} className="mb-5">
-              <p className="nav-section-title mb-2 px-3">
+            <div key={section.title} className="space-y-1">
+              <p className="px-3 text-[11px] font-bold uppercase tracking-wider text-slate-400">
                 {section.title}
               </p>
 
-              <div className="space-y-1">
+              <div className="space-y-0.5 pt-1">
                 {section.items.map((item) => {
-                  const isActive = activePath === item.href;
+                  const isActive = currentPath === item.href;
+                  const Icon = item.icon;
 
                   return (
                     <Link
                       key={item.href}
                       to={item.href}
                       onClick={() => setSidebarOpen(false)}
-                      className={`nav-item group relative ${
-                        isActive ? 'active' : ''
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-colors duration-150 ${
+                        isActive
+                          ? `${meta.activeBg} shadow-2xs`
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                       }`}
                     >
-                      {isActive && (
-                        <span
-                          className="absolute left-0 top-1/2 h-6 w-0.5 -translate-y-1/2 rounded-full"
-                          style={{ background: meta.color }}
-                        />
-                      )}
-
-                      <span
-                        className="nav-icon transition-transform duration-200 group-hover:scale-105"
-                        style={isActive ? { color: meta.color } : undefined}
-                      >
-                        {item.icon}
-                      </span>
-
-                      <span className="font-medium">{item.label}</span>
-
+                      <Icon className={`h-4 w-4 shrink-0 ${isActive ? meta.activeText : 'text-slate-400'}`} />
+                      <span className="truncate">{item.label}</span>
                       {isActive && (
                         <span
                           className="ml-auto h-1.5 w-1.5 rounded-full"
-                          style={{ background: meta.color }}
+                          style={{ backgroundColor: meta.accentColor }}
                         />
                       )}
                     </Link>
@@ -311,232 +278,186 @@ const UserLayout: React.FC<UserLayoutProps> = ({
           ))}
         </nav>
 
-        {/* Sidebar Footer */}
-        <div
-          className="border-t p-3.5"
-          style={{ borderColor: 'var(--role-border)' }}
-        >
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="group flex w-full items-center gap-3 rounded-xl p-2.5 text-left transition hover:bg-white/5"
-            title="Click to sign out"
-          >
-            <div className="avatar shrink-0">
-              {user.initials || user.name?.charAt(0) || 'U'}
+        {/* Sidebar Footer / User Account & Logout */}
+        <div className="p-3 border-t border-slate-100 bg-slate-50/50">
+          <div className="flex items-center gap-3 p-2 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-100 text-indigo-700 text-xs font-bold">
+              {userInitials}
             </div>
 
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-white">
-                {user.name || 'Account'}
+              <p className="text-xs font-semibold text-slate-900 truncate">
+                {user.name || 'User Account'}
               </p>
-
-              <p className="truncate text-xs text-slate-500">
+              <p className="text-[11px] text-slate-500 truncate">
                 {user.email || ''}
               </p>
             </div>
 
-            <LogOut
-              size={16}
-              className="shrink-0 text-slate-600 transition group-hover:text-red-400"
-            />
-          </button>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition cursor-pointer"
+              title="Sign out"
+              aria-label="Sign out"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       </aside>
 
-      {/* ── Header ── */}
-      <header className="main-header">
-        <div className="flex min-w-0 items-center gap-3 sm:gap-4">
-          {/* Mobile Menu */}
-          <button
-            type="button"
-            className="rounded-xl border border-slate-800/80 bg-slate-900/60 p-2 text-slate-400 transition hover:border-slate-700 hover:bg-slate-800 hover:text-white lg:hidden"
-            onClick={() => setSidebarOpen(true)}
-            aria-label="Open sidebar"
-          >
-            <Menu size={20} />
-          </button>
+      {/* ── Main Content Area ── */}
+      <div className="flex-1 flex flex-col min-w-0 lg:pl-64">
+        {/* Top Header */}
+        <header className="sticky top-0 z-30 h-16 bg-white/80 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-6 flex items-center justify-between gap-4">
+          {/* Left: Mobile Toggle & Page Context */}
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(true)}
+              className="p-2 rounded-xl text-slate-600 hover:bg-slate-100 border border-slate-200 lg:hidden"
+              aria-label="Open sidebar"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
 
-          {/* Page Heading */}
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h1 className="truncate text-base font-bold tracking-tight text-white sm:text-lg">
+            <div className="min-w-0">
+              <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight truncate">
                 {pageTitle}
-              </h1>
+              </h2>
+              <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-500">
+                <span>SMS Portal</span>
+                <span>/</span>
+                <span className="font-medium text-slate-700">{meta.label}</span>
+              </div>
+            </div>
+          </div>
 
-              <span
-                className="hidden h-1.5 w-1.5 rounded-full sm:block"
-                style={{ background: meta.color }}
+          {/* Right: Search, School Switcher, Notifications & Profile */}
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            {/* Quick Search */}
+            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50/80 text-xs text-slate-400 focus-within:border-indigo-600 focus-within:bg-white focus-within:ring-2 focus-within:ring-indigo-500/15 transition">
+              <Search className="h-3.5 w-3.5 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search..."
+                className="w-36 bg-transparent text-slate-800 placeholder:text-slate-400 outline-none text-xs"
               />
             </div>
 
-            <p className="hidden truncate text-xs text-slate-500 sm:block">
-              {user.name
-                ? `${user.name} • ${meta.label}`
-                : `${meta.label} Portal`}
-            </p>
-          </div>
-        </div>
+            {/* Connected School Pill */}
+            {schoolName && (
+              <Link
+                to="/select-school"
+                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50/80 text-xs font-semibold text-slate-700 hover:bg-white hover:border-slate-300 transition shadow-2xs"
+                title="Connected School • Click to switch institution"
+              >
+                <Building2 className="h-3.5 w-3.5 text-slate-500 shrink-0" />
+                <span className="max-w-[140px] truncate">{schoolName}</span>
+              </Link>
+            )}
 
-        <div className="flex items-center gap-2 sm:gap-3">
-          {/* Search */}
-          <div className="hidden items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/70 px-3 py-2 transition focus-within:border-slate-700 lg:flex">
-            <Search size={15} className="text-slate-500" />
+            {/* Notifications */}
+            
 
-            <input
-              type="text"
-              placeholder="Search..."
-              className="w-36 bg-transparent text-xs text-slate-300 outline-none placeholder:text-slate-600 lg:w-44"
-            />
-          </div>
+            {/* User Profile Dropdown */}
+            <div className="relative" ref={dropdownRef}>
+              <button
+                type="button"
+                onClick={() => setProfileOpen(!profileOpen)}
+                className="flex items-center gap-2 p-1.5 rounded-xl hover:bg-slate-100 border border-slate-200/80 transition cursor-pointer"
+                aria-label="User menu"
+                aria-expanded={profileOpen}
+              >
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-white text-xs font-bold">
+                  {userInitials}
+                </div>
 
-          {/* Connected School */}
-          {schoolName && (
-            <Link
-              to="/select-school"
-              className="hidden sm:inline-flex items-center gap-1.5 rounded-xl border border-slate-800 bg-slate-900/70 px-3 py-1.5 text-xs font-medium text-slate-300 hover:border-slate-700 hover:text-white transition"
-              title="Connected School - Click to switch"
-            >
-              <Building2 size={13} className="text-slate-400 shrink-0" />
-              <span className="max-w-[150px] truncate">{schoolName}</span>
-            </Link>
-          )}
+                <div className="hidden md:block text-left pr-1">
+                  <p className="text-xs font-semibold text-slate-900 truncate max-w-[110px]">
+                    {user.name || 'Account'}
+                  </p>
+                </div>
 
-          {/* Notifications */}
-          <button
-            type="button"
-            className="relative rounded-xl border border-slate-800 bg-slate-900/70 p-2.5 text-slate-400 transition hover:border-slate-700 hover:bg-slate-800 hover:text-white"
-            aria-label="Notifications"
-          >
-            <Bell size={18} />
+                <ChevronDown
+                  className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-150 ${
+                    profileOpen ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
 
-            <span
-              className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full ring-2 ring-slate-900"
-              style={{ background: meta.color }}
-            />
-          </button>
-
-          {/* Profile */}
-          <div className="relative" ref={dropdownRef}>
-            <button
-              type="button"
-              className="flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/70 p-1.5 pr-2 transition hover:border-slate-700 hover:bg-slate-800 sm:gap-2.5 sm:pl-2"
-              onClick={() => setProfileOpen(!profileOpen)}
-              aria-label="User menu"
-              aria-expanded={profileOpen}
-            >
-              <div className="avatar shrink-0">
-                {user.initials || user.name?.charAt(0) || 'U'}
-              </div>
-
-              <span className="hidden max-w-[120px] truncate text-xs font-medium text-slate-200 md:inline-block">
-                {user.name || 'My Profile'}
-              </span>
-
-              <ChevronDown
-                size={14}
-                className={`hidden text-slate-500 transition-transform duration-200 sm:block ${
-                  profileOpen ? 'rotate-180' : ''
-                }`}
-              />
-            </button>
-
-            {/* Profile Dropdown */}
-            {profileOpen && (
-              <div className="absolute right-0 top-full z-50 mt-2 w-[calc(100vw-2rem)] max-w-64 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/95 shadow-2xl shadow-black/30 backdrop-blur-xl sm:w-60">
-                {/* User Info */}
-                <div className="border-b border-slate-800/80 bg-slate-950/50 p-4">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white"
-                      style={{
-                        background: `linear-gradient(135deg, ${meta.color}, ${meta.color}88)`,
-                      }}
-                    >
-                      {user.initials || user.name?.charAt(0) || 'U'}
-                    </div>
-
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-white">
-                        {user.name || 'User'}
-                      </p>
-
-                      <p className="truncate text-xs text-slate-500">
-                        {user.email || ''}
-                      </p>
+              {/* Dropdown Menu */}
+              {profileOpen && (
+                <div className="absolute right-0 top-full mt-2 w-64 rounded-2xl bg-white border border-slate-200 shadow-xl py-1.5 z-50 animate-fade-in">
+                  {/* Account overview */}
+                  <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/50">
+                    <p className="text-xs font-semibold text-slate-900 truncate">
+                      {user.name || 'User Account'}
+                    </p>
+                    <p className="text-[11px] text-slate-500 truncate">
+                      {user.email || ''}
+                    </p>
+                    <div className="mt-2">
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${meta.badgeBg} ${meta.badgeText}`}>
+                        <RoleIcon className="h-3 w-3" />
+                        {meta.label}
+                      </span>
                     </div>
                   </div>
 
-                  <span className="role-badge mt-3">
-                    <span style={{ color: meta.color }}>
-                      {React.cloneElement(
-                        meta.icon as React.ReactElement<{ size?: number }>,
-                        { size: 12 }
-                      )}
-                    </span>
-                    {meta.label}
-                  </span>
+                  {/* Navigation links */}
+                  <div className="py-1 px-1.5">
+                    <Link
+                      to={role === 'TEACHER' ? '/teacher-profile' : '/student-profile'}
+                      onClick={() => setProfileOpen(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-700 hover:bg-slate-100 transition"
+                    >
+                      <User className="h-4 w-4 text-slate-400" />
+                      View Profile
+                    </Link>
+
+                    <Link
+                      to={role === 'TEACHER' ? '/teacher-dashboard' : '/student-dashboard'}
+                      onClick={() => setProfileOpen(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-700 hover:bg-slate-100 transition"
+                    >
+                      <LayoutDashboard className="h-4 w-4 text-slate-400" />
+                      Dashboard
+                    </Link>
+
+                    <Link
+                      to="/select-school"
+                      onClick={() => setProfileOpen(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-700 hover:bg-slate-100 transition"
+                    >
+                      <Building2 className="h-4 w-4 text-slate-400" />
+                      Switch School
+                    </Link>
+                  </div>
+
+                  {/* Logout */}
+                  <div className="pt-1 px-1.5 border-t border-slate-100">
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-red-600 hover:bg-red-50 transition cursor-pointer"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      Sign Out
+                    </button>
+                  </div>
                 </div>
-
-                {/* Links */}
-                <div className="p-1.5">
-                  <Link
-                    to={
-                      role === 'TEACHER'
-                        ? '/teacher-profile'
-                        : '/student-profile'
-                    }
-                    onClick={() => setProfileOpen(false)}
-                    className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm text-slate-300 transition hover:bg-white/5 hover:text-white"
-                  >
-                    <User size={15} />
-                    My Profile
-                  </Link>
-
-                  <Link
-                    to={
-                      role === 'TEACHER'
-                        ? '/teacher-dashboard'
-                        : '/student-dashboard'
-                    }
-                    onClick={() => setProfileOpen(false)}
-                    className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm text-slate-300 transition hover:bg-white/5 hover:text-white"
-                  >
-                    <LayoutDashboard size={15} />
-                    Dashboard
-                  </Link>
-
-                  <Link
-                    to="/select-school"
-                    onClick={() => setProfileOpen(false)}
-                    className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm text-slate-300 transition hover:bg-white/5 hover:text-white"
-                  >
-                    <Building2 size={15} />
-                    Switch School
-                  </Link>
-                </div>
-
-                {/* Logout */}
-                <div className="border-t border-slate-800/80 p-1.5">
-                  <button
-                    type="button"
-                    onClick={handleLogout}
-                    className="flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm text-red-400 transition hover:bg-red-500/10"
-                  >
-                    <LogOut size={15} />
-                    Sign Out
-                  </button>
-                </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* ── Main Content ── */}
-      <main className="main-content fade-in mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
-        {children}
-      </main>
+        {/* Page Content Container */}
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto animate-fade-in-up">
+          {children}
+        </main>
+      </div>
     </div>
   );
 };

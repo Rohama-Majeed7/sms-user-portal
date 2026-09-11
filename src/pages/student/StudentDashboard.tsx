@@ -13,15 +13,18 @@ import {
   ChevronRight,
   Award,
   TrendingUp,
-  MoreHorizontal,
+  Sparkles,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { StatCard } from '../../components/ui/StatCard';
+import { Badge } from '../../components/ui/Badge';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../../components/ui/Card';
 
 type Stat = {
   label: string;
   value: string;
   sub: string;
-  color: string;
+  iconBg: string;
   iconColor: string;
   icon: React.ElementType;
 };
@@ -38,40 +41,40 @@ type UpcomingTask = {
   title: string;
   due: string;
   type: string;
-  badgeColor: string;
+  badgeVariant: 'warning' | 'danger' | 'info';
 };
 
 const stats: Stat[] = [
   {
     label: 'Cumulative GPA',
     value: '3.8',
-    sub: 'Top 10% of class',
-    color: 'bg-indigo-500/10',
-    iconColor: 'text-indigo-400',
+    sub: 'Top 10% of class rank',
+    iconBg: 'bg-indigo-50',
+    iconColor: 'text-indigo-600',
     icon: Star,
   },
   {
     label: 'Attendance Rate',
     value: '94.2%',
     sub: '+2.1% from last month',
-    color: 'bg-sky-500/10',
-    iconColor: 'text-sky-400',
+    iconBg: 'bg-sky-50',
+    iconColor: 'text-sky-600',
     icon: CheckSquare,
   },
   {
     label: 'Active Courses',
     value: '7',
     sub: 'Semester 1 enrolled',
-    color: 'bg-violet-500/10',
-    iconColor: 'text-violet-400',
+    iconBg: 'bg-emerald-50',
+    iconColor: 'text-emerald-600',
     icon: BookOpen,
   },
   {
     label: 'Pending Tasks',
     value: '2',
     sub: 'Due in next 48 hours',
-    color: 'bg-amber-500/10',
-    iconColor: 'text-amber-400',
+    iconBg: 'bg-amber-50',
+    iconColor: 'text-amber-600',
     icon: Clock,
   },
 ];
@@ -119,42 +122,33 @@ const upcoming: UpcomingTask[] = [
     title: 'Calculus Assignment 4',
     due: 'Tomorrow at 11:59 PM',
     type: 'Assignment',
-    badgeColor:
-      'bg-amber-500/10 text-amber-300 border-amber-500/20',
+    badgeVariant: 'warning',
   },
   {
     title: 'Thermodynamics Mid-Quiz',
     due: 'Friday, 10:00 AM',
     type: 'Quiz',
-    badgeColor:
-      'bg-rose-500/10 text-rose-300 border-rose-500/20',
+    badgeVariant: 'danger',
   },
   {
     title: 'Shakespeare Essay Draft',
     due: 'Next Monday',
     type: 'Essay',
-    badgeColor:
-      'bg-sky-500/10 text-sky-300 border-sky-500/20',
+    badgeVariant: 'info',
   },
 ];
 
-const getGradeStyles = (grade: string) => {
-  if (grade === 'A+' || grade === 'A') {
-    return 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20';
+const getGradeBadge = (grade: string) => {
+  if (grade.startsWith('A')) {
+    return <Badge variant="success">{grade}</Badge>;
   }
-
-  if (grade === 'A-') {
-    return 'bg-indigo-500/10 text-indigo-300 border-indigo-500/20';
+  if (grade.startsWith('B')) {
+    return <Badge variant="info">{grade}</Badge>;
   }
-
-  if (grade === 'B+') {
-    return 'bg-sky-500/10 text-sky-300 border-sky-500/20';
-  }
-
-  return 'bg-slate-700/40 text-slate-300 border-slate-600/40';
+  return <Badge variant="neutral">{grade}</Badge>;
 };
 
-const StudentDashboard: React.FC = () => {
+export const StudentDashboard: React.FC = () => {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   const today = new Date().toLocaleDateString('en-US', {
@@ -164,7 +158,7 @@ const StudentDashboard: React.FC = () => {
     year: 'numeric',
   });
 
-  const userName = user?.name || 'Student';
+  const userName = user?.name ? user.name.split(' ')[0] : 'Student';
 
   return (
     <UserLayout
@@ -172,382 +166,229 @@ const StudentDashboard: React.FC = () => {
       pageTitle="Student Dashboard"
       activePath="/student-dashboard"
     >
-      <div className="w-full space-y-6 pb-8 sm:space-y-8">
-
+      <div className="space-y-6 sm:space-y-8">
         {/* =========================================================
-            WELCOME HERO
+            WELCOME HERO BANNER
         ========================================================== */}
-        <section className="relative overflow-hidden rounded-2xl border border-slate-800/80 bg-slate-950 shadow-xl shadow-black/10 sm:rounded-3xl">
+        <section className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-800 text-white p-6 sm:p-8 shadow-sm">
+          {/* Subtle decorative circles */}
+          <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/10 blur-2xl" />
+          <div className="pointer-events-none absolute -bottom-20 right-1/3 h-56 w-56 rounded-full bg-violet-400/20 blur-2xl" />
 
-          {/* Background decorations */}
-          <div className="pointer-events-none absolute -right-24 -top-32 h-72 w-72 rounded-full bg-indigo-600/20 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-32 left-1/3 h-64 w-64 rounded-full bg-violet-600/10 blur-3xl" />
-
-          <div className="absolute inset-0 bg-gradient-to-br from-indigo-950/40 via-slate-950 to-slate-950" />
-
-          <div className="relative z-10 p-5 sm:p-7 lg:p-8">
-            <div className="flex flex-col gap-7 lg:flex-row lg:items-center lg:justify-between">
-
-              {/* Hero content */}
-              <div className="max-w-2xl">
-
-                <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-indigo-500/20 bg-indigo-500/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-indigo-300">
-                  <Calendar size={13} />
-                  <span>{today}</span>
-                </div>
-
-                <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl lg:text-4xl">
-                  Welcome back, {userName}
-                  <span className="ml-2">👋</span>
-                </h1>
-
-                <p className="mt-3 max-w-xl text-sm leading-6 text-slate-400 sm:text-[15px]">
-                  Stay on top of your academic journey. You have{' '}
-                  <span className="font-semibold text-indigo-300">
-                    2 assignments due
-                  </span>{' '}
-                  this week. Keep up the great work!
-                </p>
-
-                <div className="mt-5 flex flex-wrap items-center gap-3">
-                  <Link
-                    to="/student-profile"
-                    className="group inline-flex items-center gap-2 rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-4 py-2.5 text-xs font-semibold text-indigo-200 transition-all duration-200 hover:border-indigo-400/40 hover:bg-indigo-500/20 hover:text-white sm:text-sm"
-                  >
-                    <User size={15} />
-
-                    <span>View Profile</span>
-
-                    <ChevronRight
-                      size={14}
-                      className="transition-transform group-hover:translate-x-0.5"
-                    />
-                  </Link>
-
-                  <div className="hidden items-center gap-2 text-xs text-slate-500 sm:flex">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                    All systems operational
-                  </div>
-                </div>
+          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+            <div className="max-w-2xl">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 backdrop-blur-xs text-xs font-semibold text-indigo-100 mb-3">
+                <Calendar className="h-3.5 w-3.5" />
+                <span>{today}</span>
               </div>
 
-              {/* Hero right-side summary */}
-              <div className="hidden shrink-0 lg:block">
-                <div className="w-52 rounded-2xl border border-white/5 bg-white/[0.03] p-4 backdrop-blur-sm">
-                  <div className="mb-3 flex items-center justify-between">
-                    <span className="text-xs font-medium text-slate-400">
-                      Semester progress
-                    </span>
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight">
+                Welcome back, {userName} 👋
+              </h1>
 
-                    <TrendingUp
-                      size={16}
-                      className="text-emerald-400"
-                    />
-                  </div>
+              <p className="mt-2.5 text-sm sm:text-base text-indigo-100/90 leading-relaxed max-w-xl">
+                Track your academic progress, classes, and upcoming deadlines. You have{' '}
+                <span className="font-bold text-white underline decoration-white/40 underline-offset-2">
+                  2 assignments due
+                </span>{' '}
+                this week.
+              </p>
 
-                  <div className="text-2xl font-bold text-white">
-                    78%
-                  </div>
+              <div className="mt-6 flex flex-wrap items-center gap-3">
+                <Link
+                  to="/student-profile"
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-indigo-700 text-xs sm:text-sm font-semibold hover:bg-indigo-50 active:scale-[0.99] transition shadow-xs"
+                >
+                  <User className="h-4 w-4" />
+                  <span>My Profile</span>
+                  <ChevronRight className="h-4 w-4" />
+                </Link>
 
-                  <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-800">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-500"
-                      style={{ width: '78%' }}
-                    />
-                  </div>
-
-                  <p className="mt-2 text-[11px] text-slate-500">
-                    9 weeks remaining
-                  </p>
+                <div className="inline-flex items-center gap-2 text-xs text-indigo-200">
+                  <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                  Academic term active
                 </div>
+              </div>
+            </div>
+
+            {/* Semester progress highlight card */}
+            <div className="hidden lg:block shrink-0">
+              <div className="w-56 rounded-2xl bg-white/10 backdrop-blur-md p-4 border border-white/15">
+                <div className="flex items-center justify-between text-xs font-medium text-indigo-200 mb-2">
+                  <span>Semester Progress</span>
+                  <TrendingUp className="h-4 w-4 text-emerald-300" />
+                </div>
+                <div className="text-2xl font-black text-white">78%</div>
+                <div className="mt-2.5 h-1.5 w-full rounded-full bg-white/20 overflow-hidden">
+                  <div className="h-full bg-emerald-400 rounded-full" style={{ width: '78%' }} />
+                </div>
+                <p className="mt-2 text-[11px] text-indigo-200">9 weeks remaining</p>
               </div>
             </div>
           </div>
         </section>
 
         {/* =========================================================
-            STATS
+            KEY STAT CARDS
         ========================================================== */}
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-
+        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
           {stats.map((stat) => {
             const Icon = stat.icon;
-
             return (
-              <div
+              <StatCard
                 key={stat.label}
-                className="group relative overflow-hidden rounded-2xl border border-slate-800/80 bg-slate-900/60 p-4 shadow-lg shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-700 hover:bg-slate-900 sm:p-5"
-              >
-                {/* Decorative glow */}
-                <div
-                  className={`pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full ${stat.color} opacity-0 blur-2xl transition-opacity duration-300 group-hover:opacity-100`}
-                />
-
-                <div className="relative flex items-start gap-4">
-
-                  <div
-                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/5 ${stat.color}`}
-                  >
-                    <Icon
-                      size={21}
-                      className={stat.iconColor}
-                      strokeWidth={2}
-                    />
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-medium text-slate-500">
-                      {stat.label}
-                    </p>
-
-                    <p className="mt-1 text-2xl font-bold tracking-tight text-white">
-                      {stat.value}
-                    </p>
-
-                    <p className="mt-1 truncate text-[11px] text-slate-500">
-                      {stat.sub}
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    className="rounded-lg p-1 text-slate-600 transition hover:bg-slate-800 hover:text-slate-300"
-                    aria-label={`More options for ${stat.label}`}
-                  >
-                    <MoreHorizontal size={16} />
-                  </button>
-                </div>
-              </div>
+                label={stat.label}
+                value={stat.value}
+                subtext={stat.sub}
+                icon={<Icon className="h-5 w-5" />}
+                iconBg={stat.iconBg}
+                iconColor={stat.iconColor}
+              />
             );
           })}
         </section>
 
         {/* =========================================================
-            MAIN CONTENT
+            MAIN DASHBOARD CONTENT
         ========================================================== */}
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-
-          {/* =======================================================
-              SUBJECT PERFORMANCE
-          ======================================================== */}
-          <section className="overflow-hidden rounded-2xl border border-slate-800/80 bg-slate-900/60 shadow-xl shadow-black/5 xl:col-span-2">
-
-            {/* Header */}
-            <div className="flex flex-col gap-3 border-b border-slate-800/80 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
-
-              <div>
-                <h2 className="text-base font-bold tracking-tight text-white sm:text-lg">
-                  Subject Performance
-                </h2>
-
-                <p className="mt-1 text-xs text-slate-500 sm:text-sm">
-                  Current semester grades and academic milestones
-                </p>
-              </div>
-
-              <div className="inline-flex w-fit items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-[11px] font-semibold text-emerald-300">
-                <Award size={14} />
-                Honor Roll
-              </div>
-            </div>
-
-            {/* Subjects */}
-            <div className="space-y-3 p-4 sm:space-y-4 sm:p-6">
-
-              {subjects.map((subject) => (
-                <div
-                  key={subject.name}
-                  className="group rounded-xl border border-slate-800/80 bg-slate-950/40 p-4 transition-all duration-200 hover:border-slate-700 hover:bg-slate-950/70"
-                >
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-
-                    {/* Subject information */}
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="truncate text-sm font-semibold text-white sm:text-[15px]">
-                          {subject.name}
-                        </span>
-
-                        {subject.score >= 90 && (
-                          <span className="hidden rounded-full bg-emerald-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-emerald-400 sm:inline-flex">
-                            Excellent
-                          </span>
-                        )}
-                      </div>
-
-                      <p className="mt-1 text-xs text-slate-500">
-                        {subject.teacher}
-                      </p>
-                    </div>
-
-                    {/* Grade + score */}
-                    <div className="flex items-center justify-between gap-3 sm:justify-end">
-                      <span
-                        className={`rounded-lg border px-2.5 py-1 text-xs font-bold ${getGradeStyles(
-                          subject.grade
-                        )}`}
-                      >
-                        {subject.grade}
-                      </span>
-
-                      <div className="flex items-center gap-1 text-sm font-semibold text-emerald-400">
-                        <ArrowUpRight size={15} />
-                        {subject.score}%
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Progress */}
-                  <div className="mt-3">
-                    <div className="mb-1.5 flex items-center justify-between">
-                      <span className="text-[10px] font-medium uppercase tracking-wider text-slate-600">
-                        Progress
-                      </span>
-
-                      <span className="text-[10px] font-medium text-slate-500">
-                        {subject.progress}%
-                      </span>
-                    </div>
-
-                    <div className="h-1.5 overflow-hidden rounded-full bg-slate-800">
-                      <div
-                        className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all duration-500 group-hover:from-indigo-400 group-hover:to-violet-400"
-                        style={{
-                          width: `${subject.progress}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Footer */}
-            <div className="flex flex-col gap-2 border-t border-slate-800/80 px-5 py-4 text-xs sm:flex-row sm:items-center sm:justify-between sm:px-6">
-              <span className="text-slate-600">
-                Updated 2 hours ago
-              </span>
-
-              <Link
-                to="/academic-records"
-                className="font-semibold text-indigo-400 transition hover:text-indigo-300"
-              >
-                View Academic Records →
-              </Link>
-            </div>
-          </section>
-
-          {/* =======================================================
-              RIGHT COLUMN
-          ======================================================== */}
-          <aside className="space-y-6">
-
-            {/* =====================================================
-                UPCOMING DEADLINES
-            ====================================================== */}
-            <section className="rounded-2xl border border-slate-800/80 bg-slate-900/60 p-5 shadow-xl shadow-black/5 sm:p-6">
-
-              <div className="mb-4 flex items-start justify-between gap-3 border-b border-slate-800/80 pb-4">
-
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left Column: Subject Performance Table */}
+          <Card className="lg:col-span-2 flex flex-col justify-between">
+            <div>
+              <CardHeader>
                 <div>
-                  <h2 className="text-base font-bold tracking-tight text-white">
-                    Upcoming Deadlines
-                  </h2>
-
-                  <p className="mt-1 text-xs text-slate-500">
-                    Assignments & examinations
-                  </p>
+                  <CardTitle>Subject Performance</CardTitle>
+                  <CardDescription>
+                    Current semester grades and academic progress milestones
+                  </CardDescription>
                 </div>
+                <Badge variant="success" dot>
+                  <Award className="h-3.5 w-3.5 mr-1" />
+                  Honor Roll
+                </Badge>
+              </CardHeader>
 
-                <span className="shrink-0 rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-[10px] font-bold text-amber-300">
-                  3 Active
-                </span>
-              </div>
-
-              <div className="space-y-3">
-                {upcoming.map((task) => (
+              {/* Course rows */}
+              <div className="p-4 sm:p-6 space-y-3">
+                {subjects.map((subject) => (
                   <div
-                    key={task.title}
-                    className="group flex items-start gap-3 rounded-xl border border-slate-800/80 bg-slate-950/40 p-3.5 transition-all duration-200 hover:border-slate-700 hover:bg-slate-950/70"
+                    key={subject.name}
+                    className="p-4 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-50 hover:border-slate-200 transition duration-150"
                   >
-                    {/* Icon */}
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-indigo-500/10 bg-indigo-500/10 text-indigo-400">
-                      <FileText size={16} />
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-bold text-slate-900 truncate">
+                            {subject.name}
+                          </span>
+                          {subject.score >= 90 && (
+                            <span className="hidden sm:inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800">
+                              Top Grade
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-500 mt-0.5">{subject.teacher}</p>
+                      </div>
+
+                      <div className="flex items-center justify-between sm:justify-end gap-3">
+                        {getGradeBadge(subject.grade)}
+                        <div className="flex items-center gap-1 text-sm font-bold text-emerald-600">
+                          <ArrowUpRight className="h-4 w-4" />
+                          <span>{subject.score}%</span>
+                        </div>
+                      </div>
                     </div>
 
-                    {/* Content */}
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-xs font-semibold leading-5 text-white sm:text-sm">
-                        {task.title}
-                      </p>
-
-                      <p className="mt-0.5 text-[11px] leading-5 text-slate-500 sm:text-xs">
-                        {task.due}
-                      </p>
+                    {/* Progress Bar */}
+                    <div className="mt-3">
+                      <div className="flex items-center justify-between text-[11px] font-medium text-slate-500 mb-1">
+                        <span>Course Completion</span>
+                        <span>{subject.progress}%</span>
+                      </div>
+                      <div className="h-1.5 w-full rounded-full bg-slate-200/80 overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-indigo-600 transition-all duration-300"
+                          style={{ width: `${subject.progress}%` }}
+                        />
+                      </div>
                     </div>
-
-                    {/* Badge */}
-                    <span
-                      className={`shrink-0 rounded-md border px-2 py-1 text-[9px] font-bold uppercase tracking-wide sm:text-[10px] ${task.badgeColor}`}
-                    >
-                      {task.type}
-                    </span>
                   </div>
                 ))}
               </div>
+            </div>
 
-              <button
-                type="button"
-                className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-xl border border-slate-800 bg-slate-950/50 py-2.5 text-xs font-semibold text-slate-400 transition hover:border-slate-700 hover:bg-slate-800/60 hover:text-white"
-              >
-                View all deadlines
-                <ChevronRight size={14} />
-              </button>
-            </section>
+            <CardFooter>
+              <span className="text-slate-500">Updated today</span>
+              <span className="font-semibold text-indigo-600 hover:text-indigo-700 cursor-pointer">
+                View Academic Transcript →
+              </span>
+            </CardFooter>
+          </Card>
 
-            {/* =====================================================
-                ANNOUNCEMENT
-            ====================================================== */}
-            <section className="relative overflow-hidden rounded-2xl border border-indigo-500/20 bg-gradient-to-br from-indigo-950/50 via-slate-900 to-slate-950 p-5 shadow-xl shadow-indigo-950/10 sm:p-6">
+          {/* Right Column: Deadlines & Announcements */}
+          <div className="space-y-6">
+            {/* Upcoming Deadlines */}
+            <Card>
+              <CardHeader>
+                <div>
+                  <CardTitle>Upcoming Deadlines</CardTitle>
+                  <CardDescription>Assignments & scheduled quizzes</CardDescription>
+                </div>
+                <Badge variant="warning" dot>
+                  3 Active
+                </Badge>
+              </CardHeader>
 
-              <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-indigo-500/10 blur-3xl" />
-
-              <div className="relative">
-
-                <div className="mb-4 flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-indigo-500/20 bg-indigo-500/10 text-indigo-400">
-                      <Bell size={15} />
+              <CardContent className="space-y-3 pt-0">
+                {upcoming.map((task) => (
+                  <div
+                    key={task.title}
+                    className="flex items-start gap-3 p-3.5 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-50 hover:border-slate-200 transition"
+                  >
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+                      <FileText className="h-4 w-4" />
                     </div>
 
-                    <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-indigo-300">
-                      Campus Announcement
-                    </p>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs sm:text-sm font-semibold text-slate-900 truncate">
+                        {task.title}
+                      </p>
+                      <p className="text-xs text-slate-500 mt-0.5">{task.due}</p>
+                    </div>
+
+                    <Badge variant={task.badgeVariant}>{task.type}</Badge>
                   </div>
+                ))}
 
-                  <span className="h-2 w-2 rounded-full bg-indigo-400 shadow-lg shadow-indigo-400/40" />
-                </div>
+                <button
+                  type="button"
+                  className="w-full mt-2 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 transition flex items-center justify-center gap-1 cursor-pointer"
+                >
+                  View All Assignments
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </button>
+              </CardContent>
+            </Card>
 
-                <h3 className="text-sm font-semibold leading-5 text-white">
-                  Mid-term examinations
-                </h3>
-
-                <p className="mt-2 text-xs leading-5 text-slate-400 sm:text-sm">
-                  Mid-term examinations are scheduled for{' '}
-                  <span className="font-semibold text-slate-200">
-                    October 15–20
-                  </span>
-                  . Please ensure all coursework submissions are complete.
-                </p>
-
-                <div className="mt-4 flex items-center gap-2 text-[11px] font-medium text-indigo-400">
-                  <Calendar size={13} />
-                  October 15–20
-                </div>
+            {/* Campus Announcement Card */}
+            <div className="p-5 rounded-2xl bg-indigo-50/80 border border-indigo-100">
+              <div className="flex items-center gap-2 text-indigo-900 font-bold text-xs uppercase tracking-wider mb-2">
+                <Bell className="h-4 w-4 text-indigo-600" />
+                <span>Campus Announcement</span>
               </div>
-            </section>
-
-          </aside>
+              <h4 className="text-sm font-bold text-slate-900">
+                Mid-Term Examinations Schedule
+              </h4>
+              <p className="text-xs text-slate-600 leading-relaxed mt-1.5">
+                Examinations are scheduled for October 15–20. Please verify that all coursework
+                submissions are finalized before the testing window begins.
+              </p>
+              <div className="mt-3.5 pt-3 border-t border-indigo-100/80 flex items-center gap-1.5 text-xs font-semibold text-indigo-700">
+                <Sparkles className="h-3.5 w-3.5" />
+                <span>Exam Office Updates</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </UserLayout>

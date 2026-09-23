@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import UserLayout from '../../layouts/UserLayout';
+import React, { useEffect, useState } from "react";
+import UserLayout from "../../layouts/UserLayout";
 import {
   Calendar,
   Award,
@@ -13,13 +13,20 @@ import {
   Building2,
   Briefcase,
   UserRound,
-} from 'lucide-react';
-import { updateTeacherProfile } from '../../apis/teacher/teacher.service';
-import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../components/ui/Card';
-import { Badge } from '../../components/ui/Badge';
-import { Alert } from '../../components/ui/Alert';
+} from "lucide-react";
+import { getTeacherProfile, updateTeacherProfile } from "../../apis/teacher/teacher.service";
+import { Button } from "../../components/ui/Button";
+import { Input } from "../../components/ui/Input";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "../../components/ui/Card";
+import { Badge } from "../../components/ui/Badge";
+import { Alert } from "../../components/ui/Alert";
+import { toast } from "react-toastify";
 
 interface UserData {
   id?: string;
@@ -41,76 +48,83 @@ interface ProfileForm {
   joiningDate: string;
 }
 
-const safeParseStorage = <T,>(key: string, fallback: T): T => {
-  try {
-    const value = localStorage.getItem(key);
-    if (!value) return fallback;
-    return JSON.parse(value) as T;
-  } catch {
-    return fallback;
-  }
-};
-
 export const TeacherProfile: React.FC = () => {
-  const user = useMemo(
-    () => safeParseStorage<UserData>('user', {}),
-    []
-  );
+  const user = localStorage.getItem("user")
+    ? (JSON.parse(localStorage.getItem("user") || "{}") as UserData)
+    : null;
 
-  const school = useMemo(
-    () => safeParseStorage<Record<string, string>>('sms_selected_school', {}),
-    []
-  );
-
-  const schoolName =
-    school?.name ||
-    school?.schoolName ||
-    user?.schoolName ||
-    'SMS Portal';
-
-  const getInitialForm = (): ProfileForm => ({
-    employeeNumber: user?.employeeNumber || '',
-    qualification: user?.qualification || '',
-    specialization: user?.specialization || '',
-    joiningDate: user?.joiningDate
-      ? new Date(user.joiningDate).toISOString().split('T')[0]
-      : '',
-  });
+  const school = localStorage.getItem("user")
+    ? JSON.parse(localStorage.getItem("user") || "{}").school
+    : null;
 
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [form, setForm] = useState<ProfileForm>(getInitialForm);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [form, setForm] = useState<ProfileForm>({
+    employeeNumber: "",
+    qualification: "",
+    specialization: "",
+    joiningDate: "",
+  });
+
+  useEffect(() => {
+    const fetchTeacherProfile = async () => {
+      try {
+        const response = await getTeacherProfile();
+        if (response.success === true) {
+          const data = response.data;
+          setForm({
+            employeeNumber: data.employeeNumber || "",
+            qualification: data.qualification || "",
+            specialization: data.specialization || "",
+            joiningDate: data.joiningDate || "",
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching teacher profile:", error);
+      }
+    };
+
+    fetchTeacherProfile();
+  }, []);
 
   const handleChange = (field: keyof ProfileForm, value: string) => {
     setForm((prev) => ({
       ...prev,
       [field]: value,
     }));
-    if (error) setError('');
-    if (success) setSuccess('');
+    if (error) setError("");
+    if (success) setSuccess("");
   };
 
   const handleEdit = () => {
-    setError('');
-    setSuccess('');
+    setError("");
+    setSuccess("");
     setEditing(true);
+  };
+  const getInitialForm = (): ProfileForm => {
+    return {
+      employeeNumber: "",
+      qualification: "",
+      specialization: "",
+      joiningDate: "",
+    };
   };
 
   const handleCancel = () => {
     setForm(getInitialForm());
     setEditing(false);
-    setError('');
-    setSuccess('');
+    setError("");
+    setSuccess("");
   };
 
   const handleSave = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (saving) return;
 
-    setError('');
-    setSuccess('');
+    setError("");
+    setSuccess("");
 
     try {
       setSaving(true);
@@ -121,7 +135,7 @@ export const TeacherProfile: React.FC = () => {
         specialization: form.specialization || undefined,
         joiningDate: form.joiningDate || undefined,
       });
-
+if(res.success === true) {
       const updatedUser: UserData = {
         ...user,
         ...res?.user,
@@ -129,17 +143,16 @@ export const TeacherProfile: React.FC = () => {
         ...form,
       };
 
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-      setSuccess('Your faculty profile has been updated successfully.');
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+      toast.success(res?.message || "Profile updated successfully.");
       setEditing(false);
 
-      window.setTimeout(() => {
-        setSuccess('');
-      }, 4000);
-    } catch (err: any) {
+      
+    } 
+  }catch (err: any) {
       setError(
         err?.response?.data?.message ||
-          'Failed to update your profile. Please check your connection and try again.'
+          "Failed to update your profile. Please check your connection and try again.",
       );
     } finally {
       setSaving(false);
@@ -151,27 +164,27 @@ export const TeacherProfile: React.FC = () => {
     try {
       const date = new Date(value);
       if (Number.isNaN(date.getTime())) return null;
-      return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
+      return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
       });
     } catch {
       return null;
     }
   };
 
-  const displayName = user?.name || 'Faculty Profile';
+  const displayName = user?.name || "Faculty Profile";
 
   const initials =
     user?.initials ||
     user?.name
-      ?.split(' ')
+      ?.split(" ")
       .map((part) => part.charAt(0))
-      .join('')
+      .join("")
       .slice(0, 2)
       .toUpperCase() ||
-    'T';
+    "T";
 
   return (
     <UserLayout
@@ -209,19 +222,19 @@ export const TeacherProfile: React.FC = () => {
                 <div className="mt-2 flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-4 text-xs text-slate-500">
                   <span className="flex items-center gap-1.5 truncate">
                     <Mail className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                    {user?.email || 'No email specified'}
+                    {user?.email || "No email specified"}
                   </span>
                   <span className="hidden sm:inline text-slate-300">•</span>
                   <span className="flex items-center gap-1.5 truncate">
                     <Building2 className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                    {schoolName}
+                    {school?.name || "No institution specified"}
                   </span>
                 </div>
 
-                {form.employeeNumber && (
+                {form?.employeeNumber && (
                   <div className="mt-2.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 font-mono text-xs font-semibold text-emerald-800">
                     <Hash className="h-3.5 w-3.5 text-emerald-600" />
-                    <span>Faculty ID: {form.employeeNumber}</span>
+                    <span>Faculty ID: {form?.employeeNumber}</span>
                   </div>
                 )}
               </div>
@@ -284,7 +297,8 @@ export const TeacherProfile: React.FC = () => {
                 <div>
                   <CardTitle>Faculty &amp; Employment Details</CardTitle>
                   <CardDescription>
-                    Professional qualifications, employment registration, and subject areas
+                    Professional qualifications, employment registration, and
+                    subject areas
                   </CardDescription>
                 </div>
               </div>
@@ -304,7 +318,9 @@ export const TeacherProfile: React.FC = () => {
                     value={form.employeeNumber}
                     placeholder="e.g. EMP-2024-019"
                     leftIcon={<Hash className="h-4 w-4" />}
-                    onChange={(e) => handleChange('employeeNumber', e.target.value)}
+                    onChange={(e) =>
+                      handleChange("employeeNumber", e.target.value)
+                    }
                   />
                 ) : (
                   <ViewField
@@ -321,12 +337,14 @@ export const TeacherProfile: React.FC = () => {
                     label="Joining Date"
                     value={form.joiningDate}
                     leftIcon={<Calendar className="h-4 w-4" />}
-                    onChange={(e) => handleChange('joiningDate', e.target.value)}
+                    onChange={(e) =>
+                      handleChange("joiningDate", e.target.value)
+                    }
                   />
                 ) : (
                   <ViewField
                     label="Joining Date"
-                    value={formatDate(form.joiningDate) || ''}
+                    value={formatDate(form.joiningDate) || ""}
                     icon={<Calendar className="h-4 w-4" />}
                   />
                 )}
@@ -338,7 +356,9 @@ export const TeacherProfile: React.FC = () => {
                     value={form.qualification}
                     placeholder="e.g. M.Sc. Mathematics, B.Ed"
                     leftIcon={<Award className="h-4 w-4" />}
-                    onChange={(e) => handleChange('qualification', e.target.value)}
+                    onChange={(e) =>
+                      handleChange("qualification", e.target.value)
+                    }
                   />
                 ) : (
                   <ViewField
@@ -355,7 +375,9 @@ export const TeacherProfile: React.FC = () => {
                     value={form.specialization}
                     placeholder="e.g. Advanced Calculus, Mechanics"
                     leftIcon={<BookOpen className="h-4 w-4" />}
-                    onChange={(e) => handleChange('specialization', e.target.value)}
+                    onChange={(e) =>
+                      handleChange("specialization", e.target.value)
+                    }
                   />
                 ) : (
                   <ViewField
@@ -388,20 +410,11 @@ export const TeacherProfile: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/60">
                   <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                    Account ID
-                  </p>
-                  <p className="mt-1 font-mono text-xs font-semibold text-slate-800 truncate">
-                    {user?.id || 'System Generated'}
-                  </p>
-                </div>
-
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/60">
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                     Portal Role
                   </p>
                   <p className="mt-1 text-sm font-semibold text-emerald-700 flex items-center gap-1.5">
                     <UserRound className="h-4 w-4" />
-                    <span>Teacher / Faculty</span>
+                    <span>Faculty</span>
                   </p>
                 </div>
 
@@ -410,7 +423,7 @@ export const TeacherProfile: React.FC = () => {
                     Institution
                   </p>
                   <p className="mt-1 text-sm font-semibold text-slate-800 truncate">
-                    {schoolName}
+                    {school?.name || "Not specified"}
                   </p>
                 </div>
               </div>
@@ -421,11 +434,18 @@ export const TeacherProfile: React.FC = () => {
           {editing && (
             <div className="sticky bottom-4 z-20 p-4 rounded-2xl bg-white border border-slate-200 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in-up">
               <div className="text-xs text-slate-600">
-                <span className="font-semibold text-slate-900">Unsaved Changes:</span> Verify all
-                faculty registration details before saving.
+                <span className="font-semibold text-slate-900">
+                  Unsaved Changes:
+                </span>{" "}
+                Verify all faculty registration details before saving.
               </div>
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={handleCancel} disabled={saving}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCancel}
+                  disabled={saving}
+                >
                   Cancel
                 </Button>
                 <Button
@@ -459,8 +479,10 @@ const ViewField: React.FC<ViewFieldProps> = ({ label, value, icon }) => (
     </p>
     <div className="h-11 px-3.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center gap-2.5 text-sm">
       <span className="text-slate-400 shrink-0">{icon}</span>
-      <span className={`truncate ${value ? 'text-slate-900 font-medium' : 'text-slate-400 italic'}`}>
-        {value || 'Not specified'}
+      <span
+        className={`truncate ${value ? "text-slate-900 font-medium" : "text-slate-400 italic"}`}
+      >
+        {value || "Not specified"}
       </span>
     </div>
   </div>

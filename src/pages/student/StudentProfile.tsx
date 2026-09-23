@@ -1,12 +1,11 @@
-import React, { useMemo, useState } from 'react';
-import UserLayout from '../../layouts/UserLayout';
+import React, { useEffect, useState } from "react";
+import UserLayout from "../../layouts/UserLayout";
 import {
   User,
   Calendar,
   MapPin,
   Phone,
   Shield,
-  Hash,
   Pencil,
   X,
   Save,
@@ -14,14 +13,25 @@ import {
   Building2,
   UserCheck,
   GraduationCap,
-} from 'lucide-react';
-import { updateStudentProfile } from '../../apis/student/student.service';
-import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
-import { Select } from '../../components/ui/Select';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../components/ui/Card';
-import { Badge } from '../../components/ui/Badge';
-import { Alert } from '../../components/ui/Alert';
+} from "lucide-react";
+import {
+  getStudentProfile,
+  updateStudentProfile,
+} from "../../apis/student/student.service";
+import { Button } from "../../components/ui/Button";
+import { Input } from "../../components/ui/Input";
+import { Select } from "../../components/ui/Select";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "../../components/ui/Card";
+import { Badge } from "../../components/ui/Badge";
+import { Alert } from "../../components/ui/Alert";
+import { toast } from "react-toastify";
+import { Navigate } from "react-router-dom";
 
 type ProfileForm = {
   dateOfBirth: string;
@@ -29,61 +39,79 @@ type ProfileForm = {
   address: string;
   guardianName: string;
   guardianPhone: string;
-  admissionNumber: string;
+};
+
+export const ProtectedRoute: React.FC<{ element: React.ReactNode; allowedRoles: string[] }> = ({ element, allowedRoles }) => {
+  const token = localStorage.getItem("accessToken");
+  const user = JSON.parse(localStorage.getItem("user") || "null");
+
+  if (!token || !user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!allowedRoles.includes(user.role)) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <>{element}</>;
 };
 
 export const StudentProfile: React.FC = () => {
-  const user = useMemo(() => {
-    try {
-      return JSON.parse(localStorage.getItem('user') || '{}');
-    } catch {
-      return {};
-    }
-  }, []);
+  const user = localStorage.getItem("user")
+    ? JSON.parse(localStorage.getItem("user") || "{}")
+    : null;
 
-  const school = useMemo(() => {
-    try {
-      return JSON.parse(localStorage.getItem('sms_selected_school') || '{}');
-    } catch {
-      return {};
-    }
-  }, []);
+  const school = localStorage.getItem("user")
+    ? JSON.parse(localStorage.getItem("user") || "{}")?.school
+    : null;
 
   const schoolName =
-    school?.name ||
-    school?.schoolName ||
-    user?.schoolName ||
-    'SMS Portal';
+    school?.name || school?.schoolName || user?.schoolName || "SMS Portal";
 
-  const getInitialForm = (): ProfileForm => ({
-    dateOfBirth: user?.dateOfBirth
-      ? new Date(user.dateOfBirth).toISOString().split('T')[0]
-      : '',
-    gender: user?.gender || '',
-    address: user?.address || '',
-    guardianName: user?.guardianName || '',
-    guardianPhone: user?.guardianPhone || '',
-    admissionNumber: user?.admissionNumber || '',
+ const getInitialForm = (): ProfileForm => ({
+    dateOfBirth: "",
+    gender: "",
+    address:  "",
+    guardianName:  "",
+    guardianPhone:  "",
   });
 
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [form, setForm] = useState<ProfileForm>(getInitialForm);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [form, setForm] = useState<ProfileForm>(getInitialForm());
+ 
 
+  useEffect(() => {
+    const fetchStudentProfile = async () => {
+      try {
+        const res = await getStudentProfile();
+        setForm({
+          dateOfBirth: res?.data?.dateOfBirth || "",
+          gender: res?.data?.gender || "",
+          address: res?.data?.address || "",
+          guardianName: res?.data?.guardianName || "",
+          guardianPhone: res?.data?.guardianPhone || "",
+        });
+      } catch (err) {
+        console.error("Failed to fetch student profile:", err);
+      }
+    };
+    fetchStudentProfile();
+  }, []);
   const handleChange = (field: keyof ProfileForm, value: string) => {
     setForm((prev) => ({
       ...prev,
       [field]: value,
     }));
-    if (error) setError('');
-    if (success) setSuccess('');
+    if (error) setError("");
+    if (success) setSuccess("");
   };
 
   const handleEdit = () => {
-    setError('');
-    setSuccess('');
+    setError("");
+    setSuccess("");
     setForm(getInitialForm());
     setEditing(true);
   };
@@ -91,14 +119,14 @@ export const StudentProfile: React.FC = () => {
   const handleCancel = () => {
     setForm(getInitialForm());
     setEditing(false);
-    setError('');
-    setSuccess('');
+    setError("");
+    setSuccess("");
   };
 
   const handleSave = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    setError('');
-    setSuccess('');
+    setError("");
+    setSuccess("");
 
     try {
       setSaving(true);
@@ -109,27 +137,25 @@ export const StudentProfile: React.FC = () => {
         address: form.address || undefined,
         guardianName: form.guardianName || undefined,
         guardianPhone: form.guardianPhone || undefined,
-        admissionNumber: form.admissionNumber || undefined,
       });
 
       const updated = {
         ...user,
-        ...res?.user,
-        ...res?.student,
+        ...res?.data,
         ...form,
       };
 
-      localStorage.setItem('user', JSON.stringify(updated));
-      setSuccess('Your student profile has been updated successfully.');
+      localStorage.setItem("user", JSON.stringify(updated));
+      toast.success(res?.message || "Profile updated successfully!");
       setEditing(false);
 
       setTimeout(() => {
-        setSuccess('');
+        setSuccess("");
       }, 4000);
     } catch (err: any) {
       setError(
         err?.response?.data?.message ||
-          'Unable to update your profile. Please check your connection and try again.'
+          "Unable to update your profile. Please check your connection and try again.",
       );
     } finally {
       setSaving(false);
@@ -141,10 +167,10 @@ export const StudentProfile: React.FC = () => {
     try {
       const date = new Date(value);
       if (Number.isNaN(date.getTime())) return null;
-      return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
+      return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
       });
     } catch {
       return null;
@@ -155,12 +181,12 @@ export const StudentProfile: React.FC = () => {
     user?.initials ||
     (user?.name
       ? user.name
-          .split(' ')
+          .split(" ")
           .map((p: string) => p[0])
-          .join('')
+          .join("")
           .slice(0, 2)
           .toUpperCase()
-      : 'S');
+      : "S");
 
   return (
     <UserLayout
@@ -180,14 +206,13 @@ export const StudentProfile: React.FC = () => {
                 <div className="h-20 w-20 sm:h-22 sm:w-22 rounded-2xl bg-indigo-600 text-white text-2xl font-bold flex items-center justify-center shadow-md shadow-indigo-500/20">
                   {initials}
                 </div>
-                <div className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-emerald-500 ring-4 ring-white" />
               </div>
 
               {/* Student Identity */}
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2.5">
                   <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight truncate">
-                    {user?.name || 'Student Profile'}
+                    {user?.name || "Student Profile"}
                   </h1>
                   <Badge variant="student">
                     <GraduationCap className="h-3.5 w-3.5 mr-1" />
@@ -198,7 +223,7 @@ export const StudentProfile: React.FC = () => {
                 <div className="mt-2 flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-4 text-xs text-slate-500">
                   <span className="flex items-center gap-1.5 truncate">
                     <Mail className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                    {user?.email || 'No email specified'}
+                    {user?.email || "No email specified"}
                   </span>
                   <span className="hidden sm:inline text-slate-300">•</span>
                   <span className="flex items-center gap-1.5 truncate">
@@ -206,13 +231,6 @@ export const StudentProfile: React.FC = () => {
                     {schoolName}
                   </span>
                 </div>
-
-                {form.admissionNumber && (
-                  <div className="mt-2.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 font-mono text-xs font-medium text-slate-700">
-                    <Hash className="h-3.5 w-3.5 text-slate-400" />
-                    <span>Admission ID: {form.admissionNumber}</span>
-                  </div>
-                )}
               </div>
             </div>
 
@@ -286,23 +304,6 @@ export const StudentProfile: React.FC = () => {
 
             <CardContent>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">
-                {/* Admission Number */}
-                {editing ? (
-                  <Input
-                    label="Admission Number"
-                    value={form.admissionNumber}
-                    placeholder="e.g. ADM-2026-0042"
-                    leftIcon={<Hash className="h-4 w-4" />}
-                    onChange={(e) => handleChange('admissionNumber', e.target.value)}
-                  />
-                ) : (
-                  <ViewField
-                    label="Admission Number"
-                    value={form.admissionNumber}
-                    icon={<Hash className="h-4 w-4" />}
-                  />
-                )}
-
                 {/* Date of Birth */}
                 {editing ? (
                   <Input
@@ -310,12 +311,14 @@ export const StudentProfile: React.FC = () => {
                     label="Date of Birth"
                     value={form.dateOfBirth}
                     leftIcon={<Calendar className="h-4 w-4" />}
-                    onChange={(e) => handleChange('dateOfBirth', e.target.value)}
+                    onChange={(e) =>
+                      handleChange("dateOfBirth", e.target.value)
+                    }
                   />
                 ) : (
                   <ViewField
                     label="Date of Birth"
-                    value={formatDate(form.dateOfBirth) || ''}
+                    value={formatDate(form.dateOfBirth) || ""}
                     icon={<Calendar className="h-4 w-4" />}
                   />
                 )}
@@ -326,7 +329,7 @@ export const StudentProfile: React.FC = () => {
                     label="Gender"
                     value={form.gender}
                     leftIcon={<Shield className="h-4 w-4" />}
-                    onChange={(e) => handleChange('gender', e.target.value)}
+                    onChange={(e) => handleChange("gender", e.target.value)}
                   >
                     <option value="">Select Gender...</option>
                     <option value="MALE">Male</option>
@@ -338,8 +341,9 @@ export const StudentProfile: React.FC = () => {
                     label="Gender"
                     value={
                       form.gender
-                        ? form.gender.charAt(0) + form.gender.slice(1).toLowerCase()
-                        : ''
+                        ? form.gender.charAt(0) +
+                          form.gender.slice(1).toLowerCase()
+                        : ""
                     }
                     icon={<Shield className="h-4 w-4" />}
                   />
@@ -352,7 +356,7 @@ export const StudentProfile: React.FC = () => {
                     value={form.address}
                     placeholder="e.g. 123 University Ave, Block B"
                     leftIcon={<MapPin className="h-4 w-4" />}
-                    onChange={(e) => handleChange('address', e.target.value)}
+                    onChange={(e) => handleChange("address", e.target.value)}
                   />
                 ) : (
                   <ViewField
@@ -389,7 +393,9 @@ export const StudentProfile: React.FC = () => {
                     value={form.guardianName}
                     placeholder="e.g. Robert Williams"
                     leftIcon={<User className="h-4 w-4" />}
-                    onChange={(e) => handleChange('guardianName', e.target.value)}
+                    onChange={(e) =>
+                      handleChange("guardianName", e.target.value)
+                    }
                   />
                 ) : (
                   <ViewField
@@ -406,7 +412,9 @@ export const StudentProfile: React.FC = () => {
                     value={form.guardianPhone}
                     placeholder="e.g. +1 (555) 123-4567"
                     leftIcon={<Phone className="h-4 w-4" />}
-                    onChange={(e) => handleChange('guardianPhone', e.target.value)}
+                    onChange={(e) =>
+                      handleChange("guardianPhone", e.target.value)
+                    }
                   />
                 ) : (
                   <ViewField
@@ -437,20 +445,15 @@ export const StudentProfile: React.FC = () => {
 
             <CardContent>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/60">
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                    Account ID
-                  </p>
-                  <p className="mt-1 font-mono text-xs font-semibold text-slate-800 truncate">
-                    {user?.id || 'System Generated'}
-                  </p>
-                </div>
+                
 
                 <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/60">
                   <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                     Assigned Role
                   </p>
-                  <p className="mt-1 text-sm font-semibold text-indigo-700">Student</p>
+                  <p className="mt-1 text-sm font-semibold text-indigo-700">
+                    {user?.role === "STUDENT" ? "Student" : "Faculty"}
+                  </p>
                 </div>
 
                 <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/60">
@@ -458,7 +461,7 @@ export const StudentProfile: React.FC = () => {
                     Institution
                   </p>
                   <p className="mt-1 text-sm font-semibold text-slate-800 truncate">
-                    {schoolName}
+                    {school?.name}
                   </p>
                 </div>
               </div>
@@ -469,11 +472,19 @@ export const StudentProfile: React.FC = () => {
           {editing && (
             <div className="sticky bottom-4 z-20 p-4 rounded-2xl bg-white border border-slate-200 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in-up">
               <div className="text-xs text-slate-600">
-                <span className="font-semibold text-slate-900">Unsaved Changes:</span> Ensure all
-                contact and personal fields are verified before saving.
+                <span className="font-semibold text-slate-900">
+                  Unsaved Changes:
+                </span>{" "}
+                Ensure all contact and personal fields are verified before
+                saving.
               </div>
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={handleCancel} disabled={saving}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCancel}
+                  disabled={saving}
+                >
                   Cancel
                 </Button>
                 <Button
@@ -507,8 +518,10 @@ const ViewField: React.FC<ViewFieldProps> = ({ label, value, icon }) => (
     </p>
     <div className="h-11 px-3.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center gap-2.5 text-sm">
       <span className="text-slate-400 shrink-0">{icon}</span>
-      <span className={`truncate ${value ? 'text-slate-900 font-medium' : 'text-slate-400 italic'}`}>
-        {value || 'Not specified'}
+      <span
+        className={`truncate ${value ? "text-slate-900 font-medium" : "text-slate-400 italic"}`}
+      >
+        {value || "Not specified"}
       </span>
     </div>
   </div>

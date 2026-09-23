@@ -26,8 +26,8 @@ export const login = async (data: any) => {
     return response.data
 }
 
-export const logout = async (email: string, schoolId: number) => {
-    const response = await api.post('auth/logout', { email, schoolId })
+export const logout = async (email: string) => {
+    const response = await api.post('auth/logout', { email })
     localStorage.removeItem('accessToken')
     localStorage.removeItem('user')
     return response.data

@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import {
   ArrowRight,
   Eye,
@@ -7,32 +7,23 @@ import {
   Lock,
   Mail,
   GraduationCap,
-  ShieldCheck,
-} from 'lucide-react';
-import { login } from '../../apis/auth/auth.service';
-import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
-import { Alert } from '../../components/ui/Alert';
+} from "lucide-react";
+import { login } from "../../apis/auth/auth.service";
+import { Button } from "../../components/ui/Button";
+import { Input } from "../../components/ui/Input";
+import { Alert } from "../../components/ui/Alert";
 
-const SESSION_KEY = 'sms_login_draft';
-const REMEMBER_KEY = 'sms_remember_email';
-const VERIFIED_KEY = 'isVerified';
+const SESSION_KEY = "sms_login_draft";
+const REMEMBER_KEY = "sms_remember_email";
+const VERIFIED_KEY = "isVerified";
 
 interface LoginDraft {
   email?: string;
 }
 
-interface LoginUser {
-  role?: string;
-  email?: string;
-  isVerified?: boolean;
-  [key: string]: unknown;
-}
 
-interface LoginResponse {
-  accessToken: string;
-  user: LoginUser;
-}
+
+
 
 const getSessionDraft = (): LoginDraft => {
   try {
@@ -60,22 +51,19 @@ export const LoginPage: React.FC = () => {
   const rememberedEmail = localStorage.getItem(REMEMBER_KEY);
 
   const [email, setEmail] = useState(
-    rememberedEmail || sessionDraft.email || ''
+    rememberedEmail || sessionDraft.email || "",
   );
-  const [password, setPassword] = useState('');
+  const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(Boolean(rememberedEmail));
   const [showPassword, setShowPassword] = useState(false);
 
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [verificationNotice, setVerificationNotice] = useState(false);
 
   // Persist only non-sensitive login draft in session
   useEffect(() => {
-    sessionStorage.setItem(
-      SESSION_KEY,
-      JSON.stringify({ email })
-    );
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify({ email }));
   }, [email]);
 
   // Remember email preference
@@ -89,10 +77,10 @@ export const LoginPage: React.FC = () => {
   }, [rememberMe, email]);
 
   const redirectToVerification = () => {
-    localStorage.setItem(VERIFIED_KEY, 'false');
+    localStorage.setItem(VERIFIED_KEY, "false");
     setVerificationNotice(true);
     window.setTimeout(() => {
-      navigate('/verify-email', {
+      navigate("/verify-email", {
         state: { email: email.trim() },
       });
     }, 1200);
@@ -102,13 +90,13 @@ export const LoginPage: React.FC = () => {
     e.preventDefault();
     if (loading) return;
 
-    setError('');
+    setError("");
     setVerificationNotice(false);
 
     const normalizedEmail = email.trim().toLowerCase();
 
     if (!normalizedEmail || !password) {
-      setError('Please enter both your email address and password.');
+      setError("Please enter both your email address and password.");
       return;
     }
 
@@ -121,40 +109,46 @@ export const LoginPage: React.FC = () => {
     try {
       setLoading(true);
 
-      const res: LoginResponse = await login({
+      const res = await login({
         email: normalizedEmail,
         password,
-        portal: 'user',
+        portal: "user",
       });
 
-      const user = res?.user;
-      if (!res?.accessToken || !user) {
-        throw new Error('Invalid login response from server.');
+      if (res.success === true) {
+        const user = res?.data;
+        if (!res?.accessToken || !user) {
+          throw new Error("Invalid login response from server.");
+        }
+
+        localStorage.setItem("accessToken", res.accessToken);
+        localStorage.setItem("user", JSON.stringify(user));
+
+        if (typeof user.isVerified === "boolean") {
+          localStorage.setItem(VERIFIED_KEY, String(user.isVerified));
+        }
+
+        setPassword("");
+        sessionStorage.removeItem(SESSION_KEY);
+        if (res?.data?.schoolId !== null && res?.data?.schoolId !== undefined) {
+          if (user.role === "TEACHER") {
+            navigate("/teacher-dashboard");
+          } else {
+            navigate("/student-dashboard");
+          }
+        } else {
+          navigate("/select-school");
+        }
       }
-
-      localStorage.setItem('accessToken', res.accessToken);
-      localStorage.setItem('user', JSON.stringify(user));
-
-      if (typeof user.isVerified === 'boolean') {
-        localStorage.setItem(VERIFIED_KEY, String(user.isVerified));
-      }
-
-      setPassword('');
-      sessionStorage.removeItem(SESSION_KEY);
-
-      navigate('/select-school');
     } catch (err: any) {
-      const message =
-        err?.response?.data?.message ||
-        err?.message ||
-        '';
+      const message = err?.response?.data?.message || err?.message || "";
 
       const normalizedMessage = message.toLowerCase();
       const isVerificationError =
-        normalizedMessage.includes('not verified') ||
-        normalizedMessage.includes('verify your email') ||
-        normalizedMessage.includes('email verification') ||
-        normalizedMessage.includes('email is not verified');
+        normalizedMessage.includes("not verified") ||
+        normalizedMessage.includes("verify your email") ||
+        normalizedMessage.includes("email verification") ||
+        normalizedMessage.includes("email is not verified");
 
       if (isVerificationError) {
         redirectToVerification();
@@ -162,7 +156,8 @@ export const LoginPage: React.FC = () => {
       }
 
       setError(
-        message || 'Invalid credentials. Please check your details and try again.'
+        message ||
+          "Invalid credentials. Please check your details and try again.",
       );
     } finally {
       setLoading(false);
@@ -203,7 +198,11 @@ export const LoginPage: React.FC = () => {
           {/* Error Message */}
           {error && !verificationNotice && (
             <div className="mb-6">
-              <Alert variant="danger" title="Authentication Error" message={error} />
+              <Alert
+                variant="danger"
+                title="Authentication Error"
+                message={error}
+              />
             </div>
           )}
 
@@ -216,7 +215,7 @@ export const LoginPage: React.FC = () => {
               value={email}
               onChange={(e) => {
                 setEmail(e.target.value);
-                if (error) setError('');
+                if (error) setError("");
                 if (verificationNotice) setVerificationNotice(false);
               }}
               placeholder="you@school.edu"
@@ -234,22 +233,15 @@ export const LoginPage: React.FC = () => {
                 >
                   Password
                 </label>
-
-                <Link
-                  to="/forgot-password"
-                  className="text-xs font-semibold text-indigo-600 hover:text-indigo-700"
-                >
-                  Forgot password?
-                </Link>
               </div>
 
               <Input
                 id="login-password"
-                type={showPassword ? 'text' : 'password'}
+                type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => {
                   setPassword(e.target.value);
-                  if (error) setError('');
+                  if (error) setError("");
                 }}
                 placeholder="••••••••"
                 autoComplete="current-password"
@@ -260,7 +252,9 @@ export const LoginPage: React.FC = () => {
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="p-1 text-slate-400 hover:text-slate-600 focus:outline-none"
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    aria-label={
+                      showPassword ? "Hide password" : "Show password"
+                    }
                   >
                     {showPassword ? (
                       <EyeOff className="h-4 w-4" />
@@ -281,13 +275,17 @@ export const LoginPage: React.FC = () => {
                   onChange={(e) => setRememberMe(e.target.checked)}
                   className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                 />
-                <span className="text-xs font-medium text-slate-600">Remember my email</span>
+                <span className="text-xs font-medium text-slate-600">
+                  Remember me
+                </span>
               </label>
 
-              <div className="flex items-center gap-1 text-[11px] text-slate-400">
-                <ShieldCheck className="h-3.5 w-3.5" />
-                <span>SSL Encrypted</span>
-              </div>
+              <Link
+                to="/forgot-password"
+                className="text-xs font-semibold text-indigo-600 hover:text-indigo-700"
+              >
+                Forgot password?
+              </Link>
             </div>
 
             {/* Submit Button */}
@@ -306,7 +304,7 @@ export const LoginPage: React.FC = () => {
           {/* Footer link to signup */}
           <div className="mt-6 pt-6 border-t border-slate-100 text-center">
             <p className="text-xs text-slate-500">
-              Don't have an account yet?{' '}
+              Don't have an account yet?{" "}
               <Link
                 to="/signup"
                 className="font-semibold text-indigo-600 hover:text-indigo-700"

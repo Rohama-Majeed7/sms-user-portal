@@ -1,5 +1,9 @@
 import api from "../api";
 
+export const getStudentProfile = async () => {
+  const response = await api.get("student/profile");
+  return response.data;
+}
 export const updateStudentProfile = async (data: {
   dateOfBirth?: string;
   gender?: string;

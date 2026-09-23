@@ -1,7 +1,9 @@
 export interface School {
-  id: string;
+  id: number;
   name: string;
-  isVerified?: boolean;
-  schoolName?: string;
-  email?: string;
+  address: string;
+  ownerEmail: string;
+  ownerPhone: string;
+  ownerName: string;
+  status: string;
 }

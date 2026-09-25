@@ -114,7 +114,7 @@ export const UserLayout: React.FC<UserLayoutProps> = ({
   const currentPath = activePath || location.pathname;
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const school = JSON.parse(localStorage.getItem('sms_selected_school') || 'null');
+  const school = user?.school;
   const schoolName = school?.name ;
 
   const nav = roleNavMap[role];

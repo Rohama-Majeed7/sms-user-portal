@@ -1,5 +1,4 @@
 import api from "../api.ts"
-
 export const signUp = async (data: any) => {
     const payload: any = {
         email: data.email,

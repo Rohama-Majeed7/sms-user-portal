@@ -21,10 +21,6 @@ interface LoginDraft {
   email?: string;
 }
 
-
-
-
-
 const getSessionDraft = (): LoginDraft => {
   try {
     const saved = sessionStorage.getItem(SESSION_KEY);
@@ -130,16 +126,21 @@ export const LoginPage: React.FC = () => {
 
         setPassword("");
         sessionStorage.removeItem(SESSION_KEY);
-        if (res?.data?.schoolId !== null && res?.data?.schoolId !== undefined) {
-          if (user.role === "TEACHER") {
+        if (user?.schoolId !== null && user?.schoolId !== undefined) {
+          if (user?.role === "TEACHER") {
             navigate("/teacher-dashboard");
-          } else {
-            navigate("/student-dashboard");
+          } else if (user?.role === "STUDENT") {
+            {
+              navigate("/student-dashboard");
+            }
           }
         } else {
           navigate("/select-school");
         }
       }
+    
+    
+    
     } catch (err: any) {
       const message = err?.response?.data?.message || err?.message || "";
 

@@ -8,6 +8,7 @@ import { Badge } from "../../components/ui/Badge";
 import { Alert } from "../../components/ui/Alert";
 import type { School as school } from "../../types/school";
 import { toast } from "react-toastify";
+import { logout } from "../../apis/auth/auth.service";
 export const SchoolSelector: React.FC = () => {
   const [schools, setSchools] = useState<school[]>([]);
   const [selectedSchoolId, setSelectedSchoolId] = useState<string>("");
@@ -38,7 +39,7 @@ export const SchoolSelector: React.FC = () => {
           // const activeSchools = res.data.filter(
           //   (school: school) => school.status === "ACTIVE",
           // );
-          setSchools(res.data);
+          setSchools(res.data ?? []);
         }
       } catch (err: unknown) {
         console.error("Error fetching school list:", err);
@@ -81,18 +82,17 @@ export const SchoolSelector: React.FC = () => {
       setError("");
 
       const schoolId = parseInt(selectedSchoolId, 10);
-      const userId = user.id;
 
       // Call the API to connect to the selected school
-      const res = await connectToSchool(schoolId, userId);
+      const res = await connectToSchool(schoolId);
       if (res.success === true) {
         // Store the selected school in localStorage
         toast.success(
           res.message || "Successfully connected to the selected school.",
         );
         localStorage.setItem(
-          "sms_selected_school",
-          JSON.stringify(res.data.school),
+          "user",
+          JSON.stringify({ ...user, schoolId: res?.data?.schoolId, school: res.data.school }),
         );
         if (res.data.role === "TEACHER") {
           navigate("/teacher-dashboard");
@@ -118,11 +118,17 @@ export const SchoolSelector: React.FC = () => {
     }
   };
 
-  const handleSignOut = () => {
-    localStorage.removeItem("accessToken");
+  const handleSignOut = async () => {
+    try{
+     await logout(user?.email)
+ localStorage.removeItem("accessToken");
     localStorage.removeItem("user");
-    localStorage.removeItem("sms_selected_school");
     navigate("/login");
+    }catch(err){
+      console.error("Error during sign out:", err);
+      toast.error("An error occurred while signing out. Please try again.");
+    }
+   
   };
 
   const userName = user?.name || "Account";

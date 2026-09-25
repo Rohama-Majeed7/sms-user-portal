@@ -11,16 +11,25 @@ import TeacherProfile from "./pages/teacher/TeacherProfile";
 import { ToastContainer } from "react-toastify";
 
 // ─── Protected Route Guard (Requires Login + Connected School) ────
-const ProtectedRoute = ({ element  }: { element: React.ReactNode }) => {
+const ProtectedRoute = ({ element }: { element: React.ReactNode }) => {
   const token = localStorage.getItem("accessToken");
   const user = JSON.parse(localStorage.getItem("user") || "null");
-  const school = localStorage.getItem("sms_selected_school");
+  const school = user?.school;
 
   if (!token || !user) {
-    return <Navigate to="/login" replace />;
+    window.location.href = "/login";
+    return null;
   }
-  if (!school) {
-    return <Navigate to="/select-school" replace />;
+  if (user?.role !== "STUDENT" && user?.role !== "TEACHER") {
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("user");
+    window.location.href = "/login";
+    return null;
+  }
+
+  if (school === null || school === undefined) {
+    window.location.href = "/select-school";
+    return null;
   }
   return <>{element}</>;
 };
@@ -31,8 +40,16 @@ const SchoolSelectorGuard = () => {
   const user = JSON.parse(localStorage.getItem("user") || "null");
 
   if (!token || !user) {
-    return <Navigate to="/login" replace />;
+    window.location.href = "/login";
+    return null;
   }
+  if (user?.role !== "STUDENT" && user?.role !== "TEACHER") {
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("user");
+    window.location.href = "/login";
+    return null;
+  }
+
   return <SchoolSelector />;
 };
 
@@ -40,19 +57,34 @@ const SchoolSelectorGuard = () => {
 const LoginRoute = () => {
   const token = localStorage.getItem("accessToken");
   const user = JSON.parse(localStorage.getItem("user") || "null");
-  const school = localStorage.getItem("sms_selected_school");
+  const school = user?.school;
+
+  if(!token || !user) {
+    return <LoginPage />;
+  }
+  
+  if (user?.role !== "STUDENT" && user?.role !== "TEACHER") {
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("user");
+    window.location.href = "/login";
+    return null;
+  }
 
   if (token && user) {
-    if (!school) return <Navigate to="/select-school" replace />;
-    return (
-      <Navigate
-        to={
-          user?.role === "TEACHER" ? "/teacher-dashboard" : "/student-dashboard"
-        }
-        replace
-      />
-    );
+    if (school === null || school === undefined) {
+      window.location.href = "/select-school";
+      return null;
+    }
   }
+
+  if (user?.role === "STUDENT") {
+    window.location.href = "/student-dashboard";
+    return null;
+  } else if (user?.role === "TEACHER") {
+    window.location.href = "/teacher-dashboard";
+    return null;
+  }
+
   return <LoginPage />;
 };
 

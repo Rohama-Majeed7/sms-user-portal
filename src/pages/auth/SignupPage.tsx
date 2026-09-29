@@ -107,15 +107,19 @@ export const SignupPage: React.FC = () => {
         password,
         role: selectedRole,
       });
-
-      localStorage.setItem('isVerified', String(res?.user?.isVerified));
       sessionStorage.removeItem(SESSION_KEY);
-
-      navigate('/verify-email', {
-        state: {
-          email: res?.user?.email || email.trim(),
-        },
-      });
+      if (res?.data?.isVerified) {
+        navigate('/login');
+      } else {
+        const userEmail = res?.data?.user?.email || email.trim();
+        sessionStorage.setItem('sms_verify_email', userEmail);
+        navigate('/send-otp', {
+          state: {
+            email: userEmail,
+            role: selectedRole,
+          },
+        });
+      }
     } catch (err: any) {
       setError(
         err?.response?.data?.message || 'Registration failed. Please try again.'

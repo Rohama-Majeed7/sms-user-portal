@@ -32,17 +32,29 @@ export const logout = async (email: string) => {
     return response.data
 }
 
-export const sendOtp = async (email: string, schoolId: number) => {
-    const response = await api.post('auth/send-otp', { email, schoolId })
+export const sendOtp = async (email: string, schoolId?: number) => {
+    const payload: { email: string; schoolId?: number } = { email }
+    if (schoolId !== undefined && schoolId !== null) {
+        payload.schoolId = schoolId
+    }
+    const response = await api.post('auth/send-otp', payload)
     return response.data
 }
 
-export const verifyOtp = async (email: string, otp: string, schoolId: number) => {
-    const response = await api.post('auth/verify-otp', { email, otp, schoolId })
+export const verifyOtp = async (email: string, otp: string, schoolId?: number) => {
+    const payload: { email: string; otp: string; schoolId?: number } = { email, otp }
+    if (schoolId !== undefined && schoolId !== null) {
+        payload.schoolId = schoolId
+    }
+    const response = await api.post('auth/verify-otp', payload)
     return response.data
 }
 
-export const resetPassword = async (email: string, newPassword: string, schoolId: number) => {
-    const response = await api.post('auth/reset-password', { email, newPassword, schoolId })
+export const resetPassword = async (email: string, newPassword: string, schoolId?: number) => {
+    const payload: { email: string; newPassword: string; schoolId?: number } = { email, newPassword }
+    if (schoolId !== undefined && schoolId !== null) {
+        payload.schoolId = schoolId
+    }
+    const response = await api.post('auth/reset-password', payload)
     return response.data
 }

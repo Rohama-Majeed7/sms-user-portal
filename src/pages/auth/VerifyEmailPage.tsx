@@ -1,147 +1,205 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate, useLocation, Link } from 'react-router-dom';
+import React, { useState, useRef, useEffect } from "react";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import {
-  Mail,
   MailCheck,
-  ArrowRight,
-  ArrowLeft,
   RotateCw,
   ShieldCheck,
   Building2,
-} from 'lucide-react';
-import { sendOtp, verifyOtp } from '../../apis/auth/auth.service';
-import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
-import { Alert } from '../../components/ui/Alert';
+  ArrowLeft,
+  CheckCircle2,
+} from "lucide-react";
+import { sendOtp, verifyOtp } from "../../apis/auth/auth.service";
+import { Button } from "../../components/ui/Button";
+import { Alert } from "../../components/ui/Alert";
 
-type Step = 'enter-email' | 'enter-otp';
+const RESEND_COOLDOWN_SECONDS = 120;
 
 export const VerifyEmailPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const emailFromState = (location.state as { email?: string })?.email || '';
-  const selectedSchool = JSON.parse(
-    localStorage.getItem('sms_selected_school') || '{}'
-  );
+  const stateEmail = (location.state as { email?: string; role?: string })?.email;
+  const email = stateEmail || sessionStorage.getItem("sms_verify_email") || "";
 
-  const [step, setStep] = useState<Step>(
-    emailFromState ? 'enter-otp' : 'enter-email'
-  );
-  const [email, setEmail] = useState(emailFromState);
-  const [sendLoading, setSendLoading] = useState(false);
-  const [sendError, setSendError] = useState('');
+  const selectedSchool = (() => {
+    try {
+      return JSON.parse(localStorage.getItem("sms_selected_school") || "{}");
+    } catch {
+      return {};
+    }
+  })();
 
-  const [otp, setOtp] = useState<string[]>(Array(6).fill(''));
+  const [otp, setOtp] = useState<string[]>(Array(6).fill(""));
   const [verifyLoading, setVerifyLoading] = useState(false);
-  const [verifyError, setVerifyError] = useState('');
+  const [verifyError, setVerifyError] = useState("");
   const [success, setSuccess] = useState(false);
-  const [resendTimer, setResendTimer] = useState(emailFromState ? 120 : 0);
+
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendSuccess, setResendSuccess] = useState(false);
+  const [resendTimer, setResendTimer] = useState(RESEND_COOLDOWN_SECONDS);
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // Resend countdown
+  // Focus the first input field on initial load
+  useEffect(() => {
+    inputRefs.current[0]?.focus();
+  }, []);
+
+  // Resend countdown timer
   useEffect(() => {
     if (resendTimer <= 0) return;
-    const timer = setInterval(() => setResendTimer((prev) => prev - 1), 1000);
-    return () => clearInterval(timer);
+    const interval = setInterval(() => {
+      setResendTimer((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
   }, [resendTimer]);
 
-  // Step 1: Send OTP
-  const handleSendOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSendError('');
+  // Format seconds into MM:SS
+  const formatTimer = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${String(secs).padStart(2, "0")}`;
+  };
 
-    if (!email.trim()) {
-      setSendError('Please enter your email address.');
+  // OTP inputs handling
+  const handleChange = (index: number, value: string) => {
+    const numericValue = value.replace(/\D/g, "");
+    if (!numericValue) {
+      const newOtp = [...otp];
+      newOtp[index] = "";
+      setOtp(newOtp);
       return;
     }
 
-    try {
-      setSendLoading(true);
-      await sendOtp(email.trim(), selectedSchool.id);
-      setStep('enter-otp');
-      setResendTimer(120);
-    } catch (err: any) {
-      setSendError(
-        err?.response?.data?.message || 'Failed to send verification code. Please try again.'
-      );
-    } finally {
-      setSendLoading(false);
+    // If multiple digits entered/pasted into input
+    if (numericValue.length > 1) {
+      const digits = numericValue.slice(0, 6).split("");
+      const newOtp = [...otp];
+      for (let i = 0; i < digits.length; i++) {
+        if (index + i < 6) {
+          newOtp[index + i] = digits[i];
+        }
+      }
+      setOtp(newOtp);
+      const nextIndex = Math.min(index + digits.length, 5);
+      inputRefs.current[nextIndex]?.focus();
+      return;
     }
-  };
 
-  // Step 2: Resend OTP
-  const handleResend = async () => {
-    if (resendTimer > 0) return;
-    setSendError('');
-    setVerifyError('');
-
-    try {
-      setSendLoading(true);
-      await sendOtp(email.trim(), selectedSchool.id);
-      setOtp(Array(6).fill(''));
-      setResendTimer(120);
-      inputRefs.current[0]?.focus();
-    } catch (err: any) {
-      setVerifyError(
-        err?.response?.data?.message || 'Failed to resend code. Please try again.'
-      );
-    } finally {
-      setSendLoading(false);
-    }
-  };
-
-  // OTP inputs
-  const handleChange = (index: number, value: string) => {
-    if (!/^\d*$/.test(value)) return;
     const newOtp = [...otp];
-    newOtp[index] = value.slice(-1);
+    newOtp[index] = numericValue.slice(-1);
     setOtp(newOtp);
 
-    if (value && index < 5) {
+    // Auto-advance to the next input
+    if (index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
   };
 
-  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+  const handleKeyDown = (
+    index: number,
+    e: React.KeyboardEvent<HTMLInputElement>
+  ) => {
+    if (e.key === "Backspace") {
+      if (!otp[index] && index > 0) {
+        inputRefs.current[index - 1]?.focus();
+      }
+    } else if (e.key === "ArrowLeft" && index > 0) {
+      e.preventDefault();
       inputRefs.current[index - 1]?.focus();
+    } else if (e.key === "ArrowRight" && index < 5) {
+      e.preventDefault();
+      inputRefs.current[index + 1]?.focus();
     }
   };
 
   const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
     e.preventDefault();
-    const pasted = e.clipboardData.getData('text').trim();
-    if (/^\d{6}$/.test(pasted)) {
-      setOtp(pasted.split(''));
-      inputRefs.current[5]?.focus();
-    }
+    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    if (!pasted) return;
+
+    const digits = pasted.split("");
+    const newOtp = Array(6).fill("");
+    digits.forEach((digit, idx) => {
+      newOtp[idx] = digit;
+    });
+    setOtp(newOtp);
+
+    const targetIdx = Math.min(digits.length, 5);
+    inputRefs.current[targetIdx]?.focus();
   };
 
-  // Verify OTP
+  // Submit OTP Verification
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
-    setVerifyError('');
+    if (verifyLoading || success) return;
+    setVerifyError("");
+    setResendSuccess(false);
 
-    const code = otp.join('');
+    if (!email) {
+      setVerifyError("No email address provided for verification. Please return to send OTP.");
+      return;
+    }
+
+    const code = otp.join("");
     if (code.length < 6) {
-      setVerifyError('Please enter all 6 digits of the verification code.');
+      setVerifyError("Please enter all 6 digits of the verification code.");
       return;
     }
 
     try {
       setVerifyLoading(true);
-      await verifyOtp(email.trim(), code, selectedSchool.id);
-      localStorage.setItem('isVerified', 'true');
-      setSuccess(true);
-      setTimeout(() => navigate('/login'), 1800);
+      const res = await verifyOtp(email.trim(), code, selectedSchool?.id);
+
+      if (res?.success) {
+        setSuccess(true);
+        // Clean up pending verification email
+        sessionStorage.removeItem("sms_verify_email");
+        setTimeout(() => {
+          navigate("/login");
+        }, 1800);
+      } else {
+        setVerifyError(res?.message || "Verification failed. Please check the code and try again.");
+      }
     } catch (err: any) {
       setVerifyError(
-        err?.response?.data?.message || 'Invalid or expired verification code.'
+        err?.response?.data?.message || "Invalid or expired verification code."
       );
     } finally {
       setVerifyLoading(false);
+    }
+  };
+
+  // Resend OTP
+  const handleResend = async () => {
+    if (resendTimer > 0 || resendLoading) return;
+    setVerifyError("");
+    setResendSuccess(false);
+
+    if (!email) {
+      setVerifyError("Email address missing. Please return to the Send OTP screen.");
+      return;
+    }
+
+    try {
+      setResendLoading(true);
+      await sendOtp(email.trim(), selectedSchool?.id);
+      setOtp(Array(6).fill(""));
+      setResendTimer(RESEND_COOLDOWN_SECONDS);
+      setResendSuccess(true);
+      inputRefs.current[0]?.focus();
+    } catch (err: any) {
+      setVerifyError(
+        err?.response?.data?.message || "Failed to resend code. Please try again."
+      );
+    } finally {
+      setResendLoading(false);
     }
   };
 
@@ -151,21 +209,22 @@ export const VerifyEmailPage: React.FC = () => {
         {/* Brand Header */}
         <div className="text-center">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-md shadow-indigo-500/20">
-            {step === 'enter-email' ? (
-              <Mail className="h-6 w-6" />
-            ) : (
-              <MailCheck className="h-6 w-6" />
-            )}
+            <MailCheck className="h-6 w-6" />
           </div>
 
           <h2 className="mt-4 text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
-            Verify Your Email
+            Verify Email
           </h2>
 
           <p className="mt-2 text-xs sm:text-sm text-slate-500">
-            {step === 'enter-email'
-              ? 'Enter your portal email to receive a verification code'
-              : `Enter the 6-digit code sent to ${email}`}
+            {email ? (
+              <>
+                Enter the 6-digit code sent to{" "}
+                <span className="font-semibold text-slate-700">{email}</span>
+              </>
+            ) : (
+              "Enter the 6-digit code sent to your email"
+            )}
           </p>
         </div>
 
@@ -181,17 +240,25 @@ export const VerifyEmailPage: React.FC = () => {
             </div>
           )}
 
-          {/* Alerts */}
-          {sendError && (
-            <div className="mb-5">
-              <Alert variant="danger" title="Error" message={sendError} />
-            </div>
-          )}
+          {/* Error Alert */}
           {verifyError && (
             <div className="mb-5">
-              <Alert variant="danger" title="Error" message={verifyError} />
+              <Alert variant="danger" title="Verification Error" message={verifyError} />
             </div>
           )}
+
+          {/* Resend Success Alert */}
+          {resendSuccess && (
+            <div className="mb-5">
+              <Alert
+                variant="success"
+                title="Code Sent"
+                message="A new 6-digit verification code has been dispatched to your email."
+              />
+            </div>
+          )}
+
+          {/* Success Alert */}
           {success && (
             <div className="mb-5">
               <Alert
@@ -202,46 +269,22 @@ export const VerifyEmailPage: React.FC = () => {
             </div>
           )}
 
-          {/* ── STEP 1: Enter Email ── */}
-          {step === 'enter-email' && (
-            <form onSubmit={handleSendOtp} className="space-y-5">
-              <Input
-                id="verify-email"
-                label="Email Address"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="user@school.edu"
-                required
-                autoComplete="email"
-                leftIcon={<Mail className="h-4 w-4" />}
-              />
-
+          {/* Missing email fallback */}
+          {!email ? (
+            <div className="text-center py-4 space-y-4">
+              <p className="text-xs sm:text-sm text-slate-600">
+                No email address found for this verification session.
+              </p>
               <Button
-                type="submit"
                 variant="primary"
-                size="lg"
-                loading={sendLoading}
-                rightIcon={<ArrowRight className="h-4 w-4" />}
+                size="md"
+                onClick={() => navigate("/send-otp")}
                 className="w-full"
               >
-                Send Verification Code
+                Go to Send OTP
               </Button>
-
-              <div className="pt-2 text-center">
-                <Link
-                  to="/login"
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-900 transition"
-                >
-                  <ArrowLeft className="h-3.5 w-3.5" />
-                  Back to Sign In
-                </Link>
-              </div>
-            </form>
-          )}
-
-          {/* ── STEP 2: Enter OTP ── */}
-          {step === 'enter-otp' && (
+            </div>
+          ) : (
             <form onSubmit={handleVerify} className="space-y-6">
               <div>
                 <label className="block text-center text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">
@@ -263,10 +306,10 @@ export const VerifyEmailPage: React.FC = () => {
                       maxLength={1}
                       autoComplete="one-time-code"
                       value={digit}
+                      disabled={verifyLoading || success}
                       onChange={(e) => handleChange(index, e.target.value)}
                       onKeyDown={(e) => handleKeyDown(index, e)}
-                      autoFocus={index === 0}
-                      className="w-10 h-12 sm:w-12 sm:h-14 text-center text-lg sm:text-xl font-bold bg-slate-50 border border-slate-200 rounded-xl text-slate-900 outline-none focus:border-indigo-600 focus:bg-white focus:ring-3 focus:ring-indigo-500/15 transition shadow-2xs"
+                      className="w-10 h-12 sm:w-12 sm:h-14 text-center text-lg sm:text-xl font-bold bg-slate-50 border border-slate-200 rounded-xl text-slate-900 outline-none focus:border-indigo-600 focus:bg-white focus:ring-3 focus:ring-indigo-500/15 transition shadow-2xs disabled:bg-slate-100 disabled:opacity-60"
                     />
                   ))}
                 </div>
@@ -276,46 +319,60 @@ export const VerifyEmailPage: React.FC = () => {
               <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 text-center text-xs text-slate-500">
                 {resendTimer > 0 ? (
                   <p>
-                    Code expires in{' '}
+                    Code expires in{" "}
                     <span className="font-bold text-slate-700 font-mono">
-                      {`${Math.floor(resendTimer / 60)}:${String(resendTimer % 60).padStart(2, '0')}`}
+                      {formatTimer(resendTimer)}
                     </span>
                   </p>
                 ) : (
-                  <p className="text-amber-600 font-medium">Verification code expired</p>
+                  <p className="text-amber-600 font-medium">
+                    Verification code expired
+                  </p>
                 )}
 
                 <div className="mt-2 flex items-center justify-center gap-1">
                   <span>Didn't receive code?</span>
                   <button
                     type="button"
-                    disabled={resendTimer > 0 || sendLoading}
+                    disabled={resendTimer > 0 || resendLoading || verifyLoading || success}
                     onClick={handleResend}
                     className="font-semibold text-indigo-600 hover:text-indigo-700 inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                   >
-                    <RotateCw className={`h-3 w-3 ${sendLoading ? 'animate-spin' : ''}`} />
-                    {sendLoading ? 'Sending...' : 'Resend Code'}
+                    <RotateCw
+                      className={`h-3 w-3 ${resendLoading ? "animate-spin" : ""}`}
+                    />
+                    {resendLoading ? "Sending..." : "Resend Code"}
                   </button>
                 </div>
               </div>
 
+              {/* Verify Button */}
               <Button
                 type="submit"
                 variant="primary"
                 size="lg"
                 loading={verifyLoading || success}
+                disabled={otp.join("").length < 6 || verifyLoading || success}
                 className="w-full"
               >
-                Verify &amp; Continue
+                {success ? (
+                  <span className="flex items-center gap-1.5">
+                    <CheckCircle2 className="h-4 w-4" />
+                    Verified!
+                  </span>
+                ) : (
+                  "Verify & Continue"
+                )}
               </Button>
 
+              {/* Change email address link */}
               <div className="pt-2 text-center">
                 <button
                   type="button"
                   onClick={() => {
-                    setStep('enter-email');
-                    setOtp(Array(6).fill(''));
-                    setVerifyError('');
+                    navigate("/send-otp", {
+                      state: { email },
+                    });
                   }}
                   className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-900 transition cursor-pointer"
                 >
@@ -325,6 +382,16 @@ export const VerifyEmailPage: React.FC = () => {
               </div>
             </form>
           )}
+
+          {/* Back to sign in link */}
+          <div className="mt-6 pt-5 border-t border-slate-100 text-center">
+            <Link
+              to="/login"
+              className="text-xs font-semibold text-indigo-600 hover:text-indigo-700"
+            >
+              Back to Sign In
+            </Link>
+          </div>
         </div>
 
         {/* Subfooter */}

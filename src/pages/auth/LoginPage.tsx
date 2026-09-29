@@ -15,7 +15,6 @@ import { Alert } from "../../components/ui/Alert";
 
 const SESSION_KEY = "sms_login_draft";
 const REMEMBER_KEY = "sms_remember_email";
-const VERIFIED_KEY = "isVerified";
 
 interface LoginDraft {
   email?: string;
@@ -27,16 +26,6 @@ const getSessionDraft = (): LoginDraft => {
     return saved ? JSON.parse(saved) : {};
   } catch {
     return {};
-  }
-};
-
-const getStoredVerificationStatus = (): boolean | null => {
-  try {
-    const saved = localStorage.getItem(VERIFIED_KEY);
-    if (saved === null) return null;
-    return JSON.parse(saved);
-  } catch {
-    return null;
   }
 };
 
@@ -56,7 +45,7 @@ export const LoginPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [verificationNotice, setVerificationNotice] = useState(false);
-
+  const [warning, setWarning] = useState("");
   // Persist only non-sensitive login draft in session
   useEffect(() => {
     sessionStorage.setItem(SESSION_KEY, JSON.stringify({ email }));
@@ -72,16 +61,6 @@ export const LoginPage: React.FC = () => {
     }
   }, [rememberMe, email]);
 
-  const redirectToVerification = () => {
-    localStorage.setItem(VERIFIED_KEY, "false");
-    setVerificationNotice(true);
-    window.setTimeout(() => {
-      navigate("/verify-email", {
-        state: { email: email.trim() },
-      });
-    }, 1200);
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loading) return;
@@ -93,12 +72,6 @@ export const LoginPage: React.FC = () => {
 
     if (!normalizedEmail || !password) {
       setError("Please enter both your email address and password.");
-      return;
-    }
-
-    const storedVerificationStatus = getStoredVerificationStatus();
-    if (storedVerificationStatus !== null && !storedVerificationStatus) {
-      redirectToVerification();
       return;
     }
 
@@ -120,12 +93,7 @@ export const LoginPage: React.FC = () => {
         localStorage.setItem("accessToken", res.accessToken);
         localStorage.setItem("user", JSON.stringify(user));
 
-        if (typeof user.isVerified === "boolean") {
-          localStorage.setItem(VERIFIED_KEY, String(user.isVerified));
-        }
-
         setPassword("");
-        sessionStorage.removeItem(SESSION_KEY);
         if (user?.schoolId !== null && user?.schoolId !== undefined) {
           if (user?.role === "TEACHER") {
             navigate("/teacher-dashboard");
@@ -138,9 +106,6 @@ export const LoginPage: React.FC = () => {
           navigate("/select-school");
         }
       }
-    
-    
-    
     } catch (err: any) {
       const message = err?.response?.data?.message || err?.message || "";
 
@@ -151,11 +116,19 @@ export const LoginPage: React.FC = () => {
         normalizedMessage.includes("email verification") ||
         normalizedMessage.includes("email is not verified");
 
-      if (isVerificationError) {
-        redirectToVerification();
-        return;
-      }
-
+      setTimeout(() => {
+        if (isVerificationError) {
+          sessionStorage.setItem("sms_verify_email", normalizedEmail);
+          navigate("/send-otp", {
+            state: { email: normalizedEmail },
+          });
+        }
+      }, 1000);
+      setWarning(
+        isVerificationError
+          ? "Your account email requires verification. Redirecting you..."
+          : "",
+      );
       setError(
         message ||
           "Invalid credentials. Please check your details and try again.",
@@ -185,17 +158,6 @@ export const LoginPage: React.FC = () => {
 
         {/* Main Card */}
         <div className="mt-8 bg-white py-8 px-6 shadow-sm border border-slate-200/80 rounded-2xl sm:px-10">
-          {/* Verification Notice */}
-          {verificationNotice && (
-            <div className="mb-6">
-              <Alert
-                variant="warning"
-                title="Verification Required"
-                message="Your account email requires verification. Redirecting you..."
-              />
-            </div>
-          )}
-
           {/* Error Message */}
           {error && !verificationNotice && (
             <div className="mb-6">
@@ -206,7 +168,12 @@ export const LoginPage: React.FC = () => {
               />
             </div>
           )}
-
+          {/* Warning Message */}
+          {warning && (
+            <div className="mb-6">
+              <Alert variant="warning" title="Notice" message={warning} />
+            </div>
+          )}
           <form onSubmit={handleSubmit} noValidate className="space-y-5">
             {/* Email Field */}
             <Input

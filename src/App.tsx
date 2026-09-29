@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import LoginPage from "./pages/auth/LoginPage";
 import SignupPage from "./pages/auth/SignupPage";
 import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
+import SendOtpPage from "./pages/auth/SendOtpPage";
 import VerifyEmailPage from "./pages/auth/VerifyEmailPage";
 import SchoolSelector from "./pages/auth/SchoolSelector";
 import StudentDashboard from "./pages/student/StudentDashboard";
@@ -99,6 +100,7 @@ const App = () => {
         {/* Auth routes */}
         <Route path="/login" element={<LoginRoute />} />
         <Route path="/signup" element={<SignupPage />} />
+        <Route path="/send-otp" element={<SendOtpPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
 

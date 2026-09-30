@@ -5,6 +5,7 @@ import { sendOtp } from "../../apis/auth/auth.service";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { Alert } from "../../components/ui/Alert";
+import { validateEmail } from "../../utils/validation";
 
 export const SendOtpPage: React.FC = () => {
   const location = useLocation();
@@ -17,6 +18,7 @@ export const SendOtpPage: React.FC = () => {
   const [email, setEmail] = useState(initialEmail);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [emailError, setEmailError] = useState<string | undefined>();
 
   const selectedSchool = (() => {
     try {
@@ -30,12 +32,16 @@ export const SendOtpPage: React.FC = () => {
     e.preventDefault();
     if (loading) return;
     setError("");
+    setEmailError(undefined);
 
-    const trimmedEmail = email.trim();
-    if (!trimmedEmail) {
-      setError("Please enter your email address.");
+    const emailVal = validateEmail(email, true);
+    if (!emailVal.isValid) {
+      setEmailError(emailVal.error);
+      setError(emailVal.error || "Please enter a valid email address.");
       return;
     }
+
+    const trimmedEmail = email.trim().toLowerCase();
 
     try {
       setLoading(true);
@@ -107,7 +113,7 @@ export const SendOtpPage: React.FC = () => {
             </p>
           </div>
 
-          <form onSubmit={handleSendOtp} className="space-y-5">
+          <form onSubmit={handleSendOtp} noValidate className="space-y-5">
             <Input
               id="send-otp-email"
               label="Email Address"
@@ -115,12 +121,14 @@ export const SendOtpPage: React.FC = () => {
               value={email}
               onChange={(e) => {
                 setEmail(e.target.value);
+                if (emailError) setEmailError(undefined);
                 if (error) setError("");
               }}
               placeholder="user@school.edu"
               required
               autoComplete="email"
               leftIcon={<Mail className="h-4 w-4" />}
+              error={emailError}
             />
 
             <Button

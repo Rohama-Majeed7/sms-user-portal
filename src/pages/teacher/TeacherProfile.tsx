@@ -18,6 +18,11 @@ import { getTeacherProfile, updateTeacherProfile } from "../../apis/teacher/teac
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import {
+  validateAlphanumeric,
+  validateDate,
+  validateRequired,
+} from "../../utils/validation";
+import {
   Card,
   CardHeader,
   CardTitle,
@@ -67,6 +72,18 @@ export const TeacherProfile: React.FC = () => {
     specialization: "",
     joiningDate: "",
   });
+  const [savedForm, setSavedForm] = useState<ProfileForm>({
+    employeeNumber: "",
+    qualification: "",
+    specialization: "",
+    joiningDate: "",
+  });
+  const [fieldErrors, setFieldErrors] = useState<{
+    employeeNumber?: string;
+    joiningDate?: string;
+    qualification?: string;
+    specialization?: string;
+  }>({});
 
   useEffect(() => {
     const fetchTeacherProfile = async () => {
@@ -74,12 +91,14 @@ export const TeacherProfile: React.FC = () => {
         const response = await getTeacherProfile();
         if (response.success === true) {
           const data = response.data;
-          setForm({
+          const loaded: ProfileForm = {
             employeeNumber: data.employeeNumber || "",
             qualification: data.qualification || "",
             specialization: data.specialization || "",
             joiningDate: data.joiningDate || "",
-          });
+          };
+          setForm(loaded);
+          setSavedForm(loaded);
         }
       } catch (error) {
         console.error("Error fetching teacher profile:", error);
@@ -94,6 +113,9 @@ export const TeacherProfile: React.FC = () => {
       ...prev,
       [field]: value,
     }));
+    if (fieldErrors[field]) {
+      setFieldErrors((prev) => ({ ...prev, [field]: undefined }));
+    }
     if (error) setError("");
     if (success) setSuccess("");
   };
@@ -101,19 +123,13 @@ export const TeacherProfile: React.FC = () => {
   const handleEdit = () => {
     setError("");
     setSuccess("");
+    setFieldErrors({});
     setEditing(true);
-  };
-  const getInitialForm = (): ProfileForm => {
-    return {
-      employeeNumber: "",
-      qualification: "",
-      specialization: "",
-      joiningDate: "",
-    };
   };
 
   const handleCancel = () => {
-    setForm(getInitialForm());
+    setForm({ ...savedForm });
+    setFieldErrors({});
     setEditing(false);
     setError("");
     setSuccess("");
@@ -126,30 +142,78 @@ export const TeacherProfile: React.FC = () => {
     setError("");
     setSuccess("");
 
+    const newFieldErrors: {
+      employeeNumber?: string;
+      joiningDate?: string;
+      qualification?: string;
+      specialization?: string;
+    } = {};
+
+    // 1. Employee Number (mandatory)
+    const empVal = validateAlphanumeric(form.employeeNumber, "Employee number", true);
+    if (!empVal.isValid) {
+      newFieldErrors.employeeNumber = empVal.error;
+    }
+
+    // 2. Joining Date (mandatory)
+    const dateVal = validateDate(form.joiningDate, "Joining date", {
+      disallowFuture: true,
+      isRequired: true,
+    });
+    if (!dateVal.isValid) {
+      newFieldErrors.joiningDate = dateVal.error;
+    }
+
+    // 3. Highest Qualification (mandatory)
+    const qualVal = validateRequired(form.qualification, "Highest qualification", 2);
+    if (!qualVal.isValid) {
+      newFieldErrors.qualification = qualVal.error;
+    }
+
+    // 4. Subject Specialization (mandatory)
+    const specVal = validateRequired(form.specialization, "Subject specialization", 2);
+    if (!specVal.isValid) {
+      newFieldErrors.specialization = specVal.error;
+    }
+
+    if (Object.keys(newFieldErrors).length > 0) {
+      setFieldErrors(newFieldErrors);
+      setError("Please fill in all mandatory fields correctly before saving your profile.");
+      return;
+    }
+
     try {
       setSaving(true);
 
       const res = await updateTeacherProfile({
-        employeeNumber: form.employeeNumber || undefined,
-        qualification: form.qualification || undefined,
-        specialization: form.specialization || undefined,
-        joiningDate: form.joiningDate || undefined,
+        employeeNumber: form.employeeNumber.trim(),
+        qualification: form.qualification.trim(),
+        specialization: form.specialization.trim(),
+        joiningDate: form.joiningDate.trim(),
       });
-if(res.success === true) {
-      const updatedUser: UserData = {
-        ...user,
-        ...res?.user,
-        ...res?.teacher,
-        ...form,
-      };
+      if (res.success === true) {
+        const updatedForm: ProfileForm = {
+          employeeNumber: form.employeeNumber.trim(),
+          qualification: form.qualification.trim(),
+          specialization: form.specialization.trim(),
+          joiningDate: form.joiningDate.trim(),
+        };
 
-      localStorage.setItem("user", JSON.stringify(updatedUser));
-      toast.success(res?.message || "Profile updated successfully.");
-      setEditing(false);
+        const updatedUser: UserData = {
+          ...user,
+          ...res?.user,
+          ...res?.teacher,
+          ...updatedForm,
+        };
 
-      
-    } 
-  }catch (err: any) {
+        localStorage.setItem("user", JSON.stringify(updatedUser));
+        toast.success(res?.message || "Profile updated successfully.");
+        setForm(updatedForm);
+        setSavedForm(updatedForm);
+        setFieldErrors({});
+        setEditing(false);
+      }
+    } catch (err: any) {
       setError(
         err?.response?.data?.message ||
           "Failed to update your profile. Please check your connection and try again.",
@@ -286,7 +350,7 @@ if(res.success === true) {
         {/* =========================================================
             PROFILE SECTIONS FORM
         ========================================================== */}
-        <form onSubmit={handleSave} className="space-y-6 sm:space-y-8">
+        <form onSubmit={handleSave} noValidate className="space-y-6 sm:space-y-8">
           {/* Section 1: Faculty & Employment */}
           <Card>
             <CardHeader>
@@ -315,9 +379,11 @@ if(res.success === true) {
                 {editing ? (
                   <Input
                     label="Employee Number"
+                    required
                     value={form.employeeNumber}
                     placeholder="e.g. EMP-2024-019"
                     leftIcon={<Hash className="h-4 w-4" />}
+                    error={fieldErrors.employeeNumber}
                     onChange={(e) =>
                       handleChange("employeeNumber", e.target.value)
                     }
@@ -335,8 +401,10 @@ if(res.success === true) {
                   <Input
                     type="date"
                     label="Joining Date"
+                    required
                     value={form.joiningDate}
                     leftIcon={<Calendar className="h-4 w-4" />}
+                    error={fieldErrors.joiningDate}
                     onChange={(e) =>
                       handleChange("joiningDate", e.target.value)
                     }
@@ -353,9 +421,11 @@ if(res.success === true) {
                 {editing ? (
                   <Input
                     label="Highest Qualification"
+                    required
                     value={form.qualification}
                     placeholder="e.g. M.Sc. Mathematics, B.Ed"
                     leftIcon={<Award className="h-4 w-4" />}
+                    error={fieldErrors.qualification}
                     onChange={(e) =>
                       handleChange("qualification", e.target.value)
                     }
@@ -372,9 +442,11 @@ if(res.success === true) {
                 {editing ? (
                   <Input
                     label="Subject Specialization"
+                    required
                     value={form.specialization}
                     placeholder="e.g. Advanced Calculus, Mechanics"
                     leftIcon={<BookOpen className="h-4 w-4" />}
+                    error={fieldErrors.specialization}
                     onChange={(e) =>
                       handleChange("specialization", e.target.value)
                     }

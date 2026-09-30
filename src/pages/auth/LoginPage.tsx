@@ -12,6 +12,7 @@ import { login } from "../../apis/auth/auth.service";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { Alert } from "../../components/ui/Alert";
+import { validateEmail } from "../../utils/validation";
 
 const SESSION_KEY = "sms_login_draft";
 const REMEMBER_KEY = "sms_remember_email";
@@ -46,6 +47,10 @@ export const LoginPage: React.FC = () => {
   const [error, setError] = useState("");
   const [verificationNotice, setVerificationNotice] = useState(false);
   const [warning, setWarning] = useState("");
+
+  const [emailError, setEmailError] = useState<string | undefined>();
+  const [passwordError, setPasswordError] = useState<string | undefined>();
+
   // Persist only non-sensitive login draft in session
   useEffect(() => {
     sessionStorage.setItem(SESSION_KEY, JSON.stringify({ email }));
@@ -67,13 +72,28 @@ export const LoginPage: React.FC = () => {
 
     setError("");
     setVerificationNotice(false);
+    setEmailError(undefined);
+    setPasswordError(undefined);
 
-    const normalizedEmail = email.trim().toLowerCase();
+    const emailVal = validateEmail(email, true);
+    let hasError = false;
 
-    if (!normalizedEmail || !password) {
-      setError("Please enter both your email address and password.");
+    if (!emailVal.isValid) {
+      setEmailError(emailVal.error);
+      hasError = true;
+    }
+
+    if (!password) {
+      setPasswordError("Password is required.");
+      hasError = true;
+    }
+
+    if (hasError) {
+      setError("Please enter your email and password to proceed.");
       return;
     }
+
+    const normalizedEmail = email.trim().toLowerCase();
 
     try {
       setLoading(true);
@@ -98,9 +118,7 @@ export const LoginPage: React.FC = () => {
           if (user?.role === "TEACHER") {
             navigate("/teacher-dashboard");
           } else if (user?.role === "STUDENT") {
-            {
-              navigate("/student-dashboard");
-            }
+            navigate("/student-dashboard");
           }
         } else {
           navigate("/select-school");
@@ -183,6 +201,7 @@ export const LoginPage: React.FC = () => {
               value={email}
               onChange={(e) => {
                 setEmail(e.target.value);
+                if (emailError) setEmailError(undefined);
                 if (error) setError("");
                 if (verificationNotice) setVerificationNotice(false);
               }}
@@ -190,6 +209,7 @@ export const LoginPage: React.FC = () => {
               autoComplete="email"
               required
               leftIcon={<Mail className="h-4 w-4" />}
+              error={emailError}
             />
 
             {/* Password Field */}
@@ -209,17 +229,19 @@ export const LoginPage: React.FC = () => {
                 value={password}
                 onChange={(e) => {
                   setPassword(e.target.value);
+                  if (passwordError) setPasswordError(undefined);
                   if (error) setError("");
                 }}
                 placeholder="••••••••"
                 autoComplete="current-password"
                 required
                 leftIcon={<Lock className="h-4 w-4" />}
+                error={passwordError}
                 rightElement={
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="p-1 text-slate-400 hover:text-slate-600 focus:outline-none"
+                    className="p-1 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer"
                     aria-label={
                       showPassword ? "Hide password" : "Show password"
                     }

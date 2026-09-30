@@ -20,6 +20,7 @@ import {
 } from "../../apis/student/student.service";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
+import { PhoneInput } from "../../components/ui/PhoneInput";
 import { Select } from "../../components/ui/Select";
 import {
   Card,
@@ -32,6 +33,13 @@ import { Badge } from "../../components/ui/Badge";
 import { Alert } from "../../components/ui/Alert";
 import { toast } from "react-toastify";
 import { Navigate } from "react-router-dom";
+import {
+  validateName,
+  validatePakistaniPhone,
+  validateDate,
+  validateSelect,
+  validateRequired,
+} from "../../utils/validation";
 
 type ProfileForm = {
   dateOfBirth: string;
@@ -68,12 +76,12 @@ export const StudentProfile: React.FC = () => {
   const schoolName =
     school?.name || school?.schoolName || user?.schoolName || "SMS Portal";
 
- const getInitialForm = (): ProfileForm => ({
+  const getInitialForm = (): ProfileForm => ({
     dateOfBirth: "",
     gender: "",
-    address:  "",
-    guardianName:  "",
-    guardianPhone:  "",
+    address: "",
+    guardianName: "",
+    guardianPhone: "",
   });
 
   const [editing, setEditing] = useState(false);
@@ -81,30 +89,43 @@ export const StudentProfile: React.FC = () => {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [form, setForm] = useState<ProfileForm>(getInitialForm());
- 
+  const [savedForm, setSavedForm] = useState<ProfileForm>(getInitialForm());
+  const [fieldErrors, setFieldErrors] = useState<{
+    dateOfBirth?: string;
+    gender?: string;
+    address?: string;
+    guardianName?: string;
+    guardianPhone?: string;
+  }>({});
 
   useEffect(() => {
     const fetchStudentProfile = async () => {
       try {
         const res = await getStudentProfile();
-        setForm({
+        const loaded: ProfileForm = {
           dateOfBirth: res?.data?.dateOfBirth || "",
           gender: res?.data?.gender || "",
           address: res?.data?.address || "",
           guardianName: res?.data?.guardianName || "",
           guardianPhone: res?.data?.guardianPhone || "",
-        });
+        };
+        setForm(loaded);
+        setSavedForm(loaded);
       } catch (err) {
         console.error("Failed to fetch student profile:", err);
       }
     };
     fetchStudentProfile();
   }, []);
+
   const handleChange = (field: keyof ProfileForm, value: string) => {
     setForm((prev) => ({
       ...prev,
       [field]: value,
     }));
+    if (fieldErrors[field as keyof typeof fieldErrors]) {
+      setFieldErrors((prev) => ({ ...prev, [field]: undefined }));
+    }
     if (error) setError("");
     if (success) setSuccess("");
   };
@@ -112,12 +133,17 @@ export const StudentProfile: React.FC = () => {
   const handleEdit = () => {
     setError("");
     setSuccess("");
-    setForm(getInitialForm());
+    setFieldErrors({});
+    // If guardianPhone is empty, default it to +92 when editing begins
+    if (!form.guardianPhone) {
+      setForm((prev) => ({ ...prev, guardianPhone: "+92" }));
+    }
     setEditing(true);
   };
 
   const handleCancel = () => {
-    setForm(getInitialForm());
+    setForm({ ...savedForm });
+    setFieldErrors({});
     setEditing(false);
     setError("");
     setSuccess("");
@@ -125,28 +151,91 @@ export const StudentProfile: React.FC = () => {
 
   const handleSave = async (e?: React.FormEvent) => {
     e?.preventDefault();
+    if (saving) return;
+
     setError("");
     setSuccess("");
+
+    const newFieldErrors: {
+      dateOfBirth?: string;
+      gender?: string;
+      address?: string;
+      guardianName?: string;
+      guardianPhone?: string;
+    } = {};
+
+    // 1. Date of Birth (mandatory)
+    const dobVal = validateDate(form.dateOfBirth, "Date of birth", {
+      disallowFuture: true,
+      isRequired: true,
+    });
+    if (!dobVal.isValid) {
+      newFieldErrors.dateOfBirth = dobVal.error;
+    }
+
+    // 2. Gender (mandatory)
+    const genderVal = validateSelect(form.gender, "gender");
+    if (!genderVal.isValid) {
+      newFieldErrors.gender = genderVal.error;
+    }
+
+    // 3. Residential Address (mandatory)
+    const addressVal = validateRequired(form.address, "Residential address", 3);
+    if (!addressVal.isValid) {
+      newFieldErrors.address = addressVal.error;
+    }
+
+    // 4. Guardian Full Name (mandatory)
+    const trimmedGuardianName = form.guardianName.trim();
+    const nameVal = validateName(trimmedGuardianName, true, "Guardian full name");
+    if (!nameVal.isValid) {
+      newFieldErrors.guardianName = nameVal.error;
+    }
+
+    // 5. Guardian Phone Number (mandatory)
+    const trimmedPhone = form.guardianPhone.trim();
+    const phoneVal = validatePakistaniPhone(trimmedPhone, true);
+    if (!phoneVal.isValid) {
+      newFieldErrors.guardianPhone = phoneVal.error;
+    }
+
+    // Prevent submission and show errors if any mandatory field is missing or invalid
+    if (Object.keys(newFieldErrors).length > 0) {
+      setFieldErrors(newFieldErrors);
+      setError("Please fill in all mandatory fields correctly before saving your profile.");
+      return;
+    }
 
     try {
       setSaving(true);
 
       const res = await updateStudentProfile({
-        dateOfBirth: form.dateOfBirth || undefined,
-        gender: form.gender || undefined,
-        address: form.address || undefined,
-        guardianName: form.guardianName || undefined,
-        guardianPhone: form.guardianPhone || undefined,
+        dateOfBirth: form.dateOfBirth.trim(),
+        gender: form.gender.trim(),
+        address: form.address.trim(),
+        guardianName: trimmedGuardianName,
+        guardianPhone: trimmedPhone,
       });
+
+      const updatedForm: ProfileForm = {
+        dateOfBirth: form.dateOfBirth.trim(),
+        gender: form.gender.trim(),
+        address: form.address.trim(),
+        guardianName: trimmedGuardianName,
+        guardianPhone: trimmedPhone,
+      };
 
       const updated = {
         ...user,
         ...res?.data,
-        ...form,
+        ...updatedForm,
       };
 
       localStorage.setItem("user", JSON.stringify(updated));
       toast.success(res?.message || "Profile updated successfully!");
+      setForm(updatedForm);
+      setSavedForm(updatedForm);
+      setFieldErrors({});
       setEditing(false);
 
       setTimeout(() => {
@@ -280,7 +369,7 @@ export const StudentProfile: React.FC = () => {
         {/* =========================================================
             PROFILE SECTIONS FORM
         ========================================================== */}
-        <form onSubmit={handleSave} className="space-y-6 sm:space-y-8">
+        <form onSubmit={handleSave} noValidate className="space-y-6 sm:space-y-8">
           {/* Section 1: Personal & Academic Details */}
           <Card>
             <CardHeader>
@@ -309,8 +398,10 @@ export const StudentProfile: React.FC = () => {
                   <Input
                     type="date"
                     label="Date of Birth"
+                    required
                     value={form.dateOfBirth}
                     leftIcon={<Calendar className="h-4 w-4" />}
+                    error={fieldErrors.dateOfBirth}
                     onChange={(e) =>
                       handleChange("dateOfBirth", e.target.value)
                     }
@@ -327,8 +418,10 @@ export const StudentProfile: React.FC = () => {
                 {editing ? (
                   <Select
                     label="Gender"
+                    required
                     value={form.gender}
                     leftIcon={<Shield className="h-4 w-4" />}
+                    error={fieldErrors.gender}
                     onChange={(e) => handleChange("gender", e.target.value)}
                   >
                     <option value="">Select Gender...</option>
@@ -353,9 +446,11 @@ export const StudentProfile: React.FC = () => {
                 {editing ? (
                   <Input
                     label="Residential Address"
+                    required
                     value={form.address}
                     placeholder="e.g. 123 University Ave, Block B"
                     leftIcon={<MapPin className="h-4 w-4" />}
+                    error={fieldErrors.address}
                     onChange={(e) => handleChange("address", e.target.value)}
                   />
                 ) : (
@@ -390,12 +485,14 @@ export const StudentProfile: React.FC = () => {
                 {editing ? (
                   <Input
                     label="Guardian Full Name"
+                    required
                     value={form.guardianName}
                     placeholder="e.g. Robert Williams"
                     leftIcon={<User className="h-4 w-4" />}
                     onChange={(e) =>
                       handleChange("guardianName", e.target.value)
                     }
+                    error={fieldErrors.guardianName}
                   />
                 ) : (
                   <ViewField
@@ -406,15 +503,16 @@ export const StudentProfile: React.FC = () => {
                 )}
 
                 {editing ? (
-                  <Input
-                    type="tel"
+                  <PhoneInput
                     label="Guardian Phone Number"
+                    required
                     value={form.guardianPhone}
-                    placeholder="e.g. +1 (555) 123-4567"
+                    placeholder="+923001234567"
+                    persistPrefix={true}
                     leftIcon={<Phone className="h-4 w-4" />}
-                    onChange={(e) =>
-                      handleChange("guardianPhone", e.target.value)
-                    }
+                    onChange={(val) => handleChange("guardianPhone", val)}
+                    error={fieldErrors.guardianPhone}
+                    helperText="Pakistani mobile format (+923XXXXXXXXX)"
                   />
                 ) : (
                   <ViewField
@@ -445,8 +543,6 @@ export const StudentProfile: React.FC = () => {
 
             <CardContent>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                
-
                 <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/60">
                   <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                     Assigned Role

@@ -3,6 +3,7 @@ import React, {
   useRef,
   useEffect,
   useCallback,
+  useMemo,
 } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
@@ -16,6 +17,7 @@ import {
   EyeOff,
   CheckCircle2,
   Building2,
+  Check,
 } from 'lucide-react';
 import {
   sendOtp,
@@ -25,6 +27,12 @@ import {
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Alert } from '../../components/ui/Alert';
+import { PasswordRequirements } from '../../components/ui/PasswordRequirements';
+import {
+  validateEmail,
+  validatePassword,
+  validateConfirmPassword,
+} from '../../utils/validation';
 
 type Step = 'email' | 'otp' | 'reset' | 'done';
 
@@ -45,8 +53,19 @@ export const ForgotPasswordPage: React.FC = () => {
   const [countdown, setCountdown] = useState(0);
   const [resendLoading, setResendLoading] = useState(false);
 
+  // Field-level error states
+  const [emailError, setEmailError] = useState<string | undefined>();
+  const [passwordError, setPasswordError] = useState<string | undefined>();
+  const [confirmError, setConfirmError] = useState<string | undefined>();
+
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const passwordResult = useMemo(
+    () => validatePassword(password, false),
+    [password]
+  );
+  const passwordsMatch = confirm.length > 0 && password === confirm;
 
   const startCountdown = useCallback(() => {
     if (timerRef.current) {
@@ -88,15 +107,18 @@ export const ForgotPasswordPage: React.FC = () => {
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setEmailError(undefined);
 
-    if (!email.trim()) {
-      setError('Please enter your portal email address.');
+    const emailVal = validateEmail(email, true);
+    if (!emailVal.isValid) {
+      setEmailError(emailVal.error);
+      setError(emailVal.error || 'Please enter a valid email address.');
       return;
     }
 
     try {
       setLoading(true);
-      await sendOtp(email.trim(), selectedSchool?.id);
+      await sendOtp(email.trim().toLowerCase(), selectedSchool?.id);
       setStep('otp');
       startCountdown();
     } catch (err: any) {
@@ -151,7 +173,7 @@ export const ForgotPasswordPage: React.FC = () => {
 
     try {
       setLoading(true);
-      await verifyOtp(email.trim(), code, selectedSchool?.id);
+      await verifyOtp(email.trim().toLowerCase(), code, selectedSchool?.id);
       setStep('reset');
     } catch (err: any) {
       setError(
@@ -168,7 +190,7 @@ export const ForgotPasswordPage: React.FC = () => {
 
     try {
       setResendLoading(true);
-      await sendOtp(email.trim(), selectedSchool?.id);
+      await sendOtp(email.trim().toLowerCase(), selectedSchool?.id);
       startCountdown();
     } catch (err: any) {
       setError(
@@ -183,25 +205,32 @@ export const ForgotPasswordPage: React.FC = () => {
   const handleResetSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setPasswordError(undefined);
+    setConfirmError(undefined);
 
-    if (!password || !confirm) {
-      setError('Please fill in both password fields.');
-      return;
+    const pwVal = validatePassword(password, true);
+    const confirmVal = validateConfirmPassword(password, confirm);
+
+    let hasError = false;
+
+    if (!pwVal.isValid) {
+      setPasswordError(pwVal.error);
+      hasError = true;
     }
 
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters long.');
-      return;
+    if (!confirmVal.isValid) {
+      setConfirmError(confirmVal.error);
+      hasError = true;
     }
 
-    if (password !== confirm) {
-      setError('Passwords do not match.');
+    if (hasError) {
+      setError('Please fix the errors below before submitting.');
       return;
     }
 
     try {
       setLoading(true);
-      await resetPassword(email.trim(), password, selectedSchool?.id);
+      await resetPassword(email.trim().toLowerCase(), password, selectedSchool?.id);
       setStep('done');
       setTimeout(() => navigate('/login'), 2200);
     } catch (err: any) {
@@ -297,17 +326,22 @@ export const ForgotPasswordPage: React.FC = () => {
 
           {/* ── STEP 1: Enter Email ── */}
           {step === 'email' && (
-            <form onSubmit={handleEmailSubmit} className="space-y-5">
+            <form onSubmit={handleEmailSubmit} noValidate className="space-y-5">
               <Input
                 id="reset-email"
                 label="Portal Email Address"
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (emailError) setEmailError(undefined);
+                  if (error) setError('');
+                }}
                 placeholder="user@school.edu"
                 required
                 autoComplete="email"
                 leftIcon={<Mail className="h-4 w-4" />}
+                error={emailError}
               />
 
               <Button
@@ -419,22 +453,29 @@ export const ForgotPasswordPage: React.FC = () => {
 
           {/* ── STEP 3: Reset Password ── */}
           {step === 'reset' && (
-            <form onSubmit={handleResetSubmit} className="space-y-5">
+            <form onSubmit={handleResetSubmit} noValidate className="space-y-5">
               <Input
                 id="new-password"
                 label="New Password"
                 type={showPw ? 'text' : 'password'}
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (passwordError) setPasswordError(undefined);
+                  if (confirmError) setConfirmError(undefined);
+                  if (error) setError('');
+                }}
                 placeholder="Min. 8 characters"
                 required
-                minLength={8}
+                autoComplete="new-password"
                 leftIcon={<Lock className="h-4 w-4" />}
+                error={passwordError}
                 rightElement={
                   <button
                     type="button"
                     onClick={() => setShowPw(!showPw)}
-                    className="p-1 text-slate-400 hover:text-slate-600"
+                    className="p-1 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    aria-label={showPw ? 'Hide password' : 'Show password'}
                   >
                     {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -446,24 +487,39 @@ export const ForgotPasswordPage: React.FC = () => {
                 label="Confirm New Password"
                 type={showConfirm ? 'text' : 'password'}
                 value={confirm}
-                onChange={(e) => setConfirm(e.target.value)}
+                onChange={(e) => {
+                  setConfirm(e.target.value);
+                  if (confirmError) setConfirmError(undefined);
+                  if (error) setError('');
+                }}
                 placeholder="Re-enter new password"
                 required
+                autoComplete="new-password"
                 leftIcon={<Lock className="h-4 w-4" />}
+                error={confirmError}
                 rightElement={
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirm(!showConfirm)}
-                    className="p-1 text-slate-400 hover:text-slate-600"
-                  >
-                    {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
+                  <div className="flex items-center gap-1">
+                    {confirm.length > 0 && (
+                      passwordsMatch ? (
+                        <Check className="h-4 w-4 text-emerald-600" />
+                      ) : (
+                        <span className="text-xs font-bold text-red-500">!</span>
+                      )
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirm(!showConfirm)}
+                      className="p-1 text-slate-400 hover:text-slate-600 cursor-pointer"
+                      aria-label={showConfirm ? 'Hide password' : 'Show password'}
+                    >
+                      {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 }
               />
 
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 text-xs text-slate-500 leading-relaxed">
-                Use at least 8 characters with a mix of letters, numbers, and symbols.
-              </div>
+              {/* Live Password Requirements checklist */}
+              <PasswordRequirements rules={passwordResult.rules} value={password} />
 
               <Button
                 type="submit"

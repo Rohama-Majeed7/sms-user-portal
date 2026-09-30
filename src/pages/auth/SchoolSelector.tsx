@@ -14,6 +14,7 @@ export const SchoolSelector: React.FC = () => {
   const [selectedSchoolId, setSelectedSchoolId] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
+  const [selectError, setSelectError] = useState<string | undefined>();
   const [connecting, setConnecting] = useState<boolean>(false);
   const navigate = useNavigate();
 
@@ -73,9 +74,11 @@ export const SchoolSelector: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!selectedSchoolId) {
+      setSelectError("Please select a school to connect.");
       setError("Please select a school to connect.");
       return;
     }
+    setSelectError(undefined);
 
     try {
       setConnecting(true);
@@ -242,8 +245,13 @@ export const SchoolSelector: React.FC = () => {
                 id="school"
                 label="Select School Institution"
                 value={selectedSchoolId}
-                onChange={(e) => setSelectedSchoolId(e.target.value)}
+                onChange={(e) => {
+                  setSelectedSchoolId(e.target.value);
+                  if (selectError) setSelectError(undefined);
+                  if (error) setError("");
+                }}
                 leftIcon={<Building2 className="h-4 w-4" />}
+                error={selectError}
                 helperText={`${schools.length} registered ${
                   schools.length === 1 ? "school" : "schools"
                 } available`}

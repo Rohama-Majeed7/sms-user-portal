@@ -58,3 +58,12 @@ export const resetPassword = async (email: string, newPassword: string, schoolId
     const response = await api.post('auth/reset-password', payload)
     return response.data
 }
+
+export const setEmailPassword = async (token: string, password: string) => {
+    const response = await api.post('auth/set-password', { token, password })
+    return response.data
+}
+export const resendSetPasswordLink = async (token: string) => {
+    const response = await api.post('auth/resend-link', { token })
+    return response.data
+}

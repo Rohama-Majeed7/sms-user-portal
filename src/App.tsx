@@ -10,6 +10,8 @@ import StudentProfile from "./pages/student/StudentProfile";
 import TeacherDashboard from "./pages/teacher/TeacherDashboard";
 import TeacherProfile from "./pages/teacher/TeacherProfile";
 import { ToastContainer } from "react-toastify";
+import SetPasswordPage from "./pages/auth/SetPasswordPage";
+import PasswordSetSuccessPage from "./pages/auth/SetPasswordSuccess";
 
 // ─── Protected Route Guard (Requires Login + Connected School) ────
 const ProtectedRoute = ({ element }: { element: React.ReactNode }) => {
@@ -60,10 +62,10 @@ const LoginRoute = () => {
   const user = JSON.parse(localStorage.getItem("user") || "null");
   const school = user?.school;
 
-  if(!token || !user) {
+  if (!token || !user) {
     return <LoginPage />;
   }
-  
+
   if (user?.role !== "STUDENT" && user?.role !== "TEACHER") {
     localStorage.removeItem("accessToken");
     localStorage.removeItem("user");
@@ -103,7 +105,12 @@ const App = () => {
         <Route path="/send-otp" element={<SendOtpPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
-
+        <Route path="/set-password" element={<SetPasswordPage />} />
+        <Route path="/set-password/:token" element={<SetPasswordPage />} />
+        <Route
+          path="/password-set-success"
+          element={<PasswordSetSuccessPage />}
+        />
         {/* Post-login school selection */}
         <Route path="/select-school" element={<SchoolSelectorGuard />} />
 
